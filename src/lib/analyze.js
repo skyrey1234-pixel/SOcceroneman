@@ -19,7 +19,10 @@ Coach notes: ${match.notes || "none"}
 
 Return 8-14 key moments spread across 90 minutes, each with observer shirt number, missed shirt number,
 severity 0-1, distance in meters (2-40), relative angle in degrees (-180..180, |angle|>60 means peripheral
-or behind), the observer's scan quality 0-1, and a short second-person coaching cue.
+or behind), the observer's scan quality 0-1, the exact clock (minute + second within that minute), the
+observer's pitch position (pitch_x 0-105 from our own goal line, pitch_y 0-68 across the pitch), the phase
+of play, one sentence on what the player DID RIGHT in that moment, one sentence on what went WRONG,
+and a short second-person coaching cue.
 Also return overall stats and a 3-4 sentence coaching summary.`,
     response_json_schema: {
       type: "object",
@@ -34,6 +37,15 @@ Also return overall stats and a 3-4 sentence coaching summary.`,
             type: "object",
             properties: {
               minute: { type: "number" },
+              second: { type: "number" },
+              pitch_x: { type: "number" },
+              pitch_y: { type: "number" },
+              phase: {
+                type: "string",
+                enum: ["build_up", "progression", "final_third", "defensive_transition", "settled_defence", "set_piece"],
+              },
+              what_went_right: { type: "string" },
+              what_went_wrong: { type: "string" },
               observer_player: { type: "number" },
               missed_player: { type: "number" },
               severity: { type: "number" },

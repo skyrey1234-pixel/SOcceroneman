@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 
 export default function PlayerProfileCard({ profile }) {
@@ -8,7 +9,10 @@ export default function PlayerProfileCard({ profile }) {
     : ["Ball-locked", "text-red-300"];
 
   return (
-    <div className="rounded-3xl border border-border/60 bg-card/40 p-6">
+    <Link
+      to={`/players/${profile.number}`}
+      className="block rounded-3xl border border-border/60 bg-card/40 p-6 transition-colors hover:border-emerald-400/40"
+    >
       <div className="flex items-center gap-3">
         <div className="grid h-11 w-11 place-items-center rounded-full bg-emerald-400/15 font-display text-lg text-emerald-300">
           {profile.number}
@@ -55,6 +59,6 @@ export default function PlayerProfileCard({ profile }) {
           {profile.worst.feedback}
         </p>
       )}
-    </div>
+    </Link>
   );
 }

@@ -1,0 +1,73 @@
+{
+  "name": "OpponentPlan",
+  "type": "object",
+  "properties": {
+    "opponent": {
+      "type": "string"
+    },
+    "our_formation": {
+      "type": "string"
+    },
+    "our_approach": {
+      "type": "string"
+    },
+    "their_shape": {
+      "type": "string"
+    },
+    "threat_level": {
+      "type": "number"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "predicted_responses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "trigger": {
+            "type": "string"
+          },
+          "their_move": {
+            "type": "string"
+          },
+          "likelihood": {
+            "type": "number"
+          },
+          "danger": {
+            "type": "number"
+          },
+          "our_counter": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "exploitable_zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "zone": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "key_players_to_track": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "opponent"
+  ]
+}

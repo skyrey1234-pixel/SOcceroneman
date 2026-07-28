@@ -8,6 +8,9 @@
     "minute": {
       "type": "number"
     },
+    "second": {
+      "type": "number"
+    },
     "observer_player": {
       "type": "number"
     },
@@ -25,6 +28,31 @@
     },
     "scan_quality": {
       "type": "number"
+    },
+    "pitch_x": {
+      "type": "number",
+      "description": "Observer position along the pitch, 0-105m"
+    },
+    "pitch_y": {
+      "type": "number",
+      "description": "Observer position across the pitch, 0-68m"
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "build_up",
+        "progression",
+        "final_third",
+        "defensive_transition",
+        "settled_defence",
+        "set_piece"
+      ]
+    },
+    "what_went_right": {
+      "type": "string"
+    },
+    "what_went_wrong": {
+      "type": "string"
     },
     "feedback": {
       "type": "string"

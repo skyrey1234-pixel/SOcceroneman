@@ -1,11 +1,12 @@
 import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Film, Radar, Users } from "lucide-react";
+import { LayoutDashboard, Film, Radar, Users, Swords } from "lucide-react";
 
 const nav = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
   { to: "/matches", label: "Matches", icon: Film },
   { to: "/players", label: "Players", icon: Users },
+  { to: "/war-room", label: "War Room", icon: Swords },
   { to: "/simulator", label: "Live Pitch", icon: Radar },
 ];
 

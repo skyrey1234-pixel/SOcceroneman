@@ -155,7 +155,9 @@ export default function MatchDetail() {
               : "No moments match these filters."}
           </p>
         ) : (
-          filtered.map((e) => <BlindspotMoment key={e.id} event={e} onPlay={setSeek} />)
+          filtered.map((e) => (
+            <BlindspotMoment key={e.id} event={e} match={match} onPlay={setSeek} />
+          ))
         )}
       </section>
     </div>
