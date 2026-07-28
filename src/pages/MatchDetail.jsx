@@ -4,13 +4,23 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import MatchVideoPlayer from "@/components/matches/MatchVideoPlayer";
+import MatchCharts from "@/components/matches/MatchCharts";
+import BlindspotMoment from "@/components/matches/BlindspotMoment";
 import { runAnalysis } from "@/lib/analyze";
-import { ArrowLeft, Loader2, Sparkles, AlertTriangle } from "lucide-react";
+import { downloadCsv } from "@/lib/exportCsv";
+import { ArrowLeft, Loader2, Sparkles, Download } from "lucide-react";
 
 export default function MatchDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
   const [running, setRunning] = useState(false);
+  const [seek, setSeek] = useState(null);
+  const [minSeverity, setMinSeverity] = useState("0");
+  const [playerFilter, setPlayerFilter] = useState("all");
 
   const { data: match } = useQuery({
     queryKey: ["match", id],
@@ -26,10 +36,20 @@ export default function MatchDetail() {
   const analyze = async () => {
     setRunning(true);
     await runAnalysis(match);
-    await qc.invalidateQueries({ queryKey: ["match", id] });
-    await qc.invalidateQueries({ queryKey: ["events", id] });
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["match", id] }),
+      qc.invalidateQueries({ queryKey: ["events", id] }),
+      qc.invalidateQueries({ queryKey: ["all-events"] }),
+    ]);
     setRunning(false);
   };
+
+  const playerNumbers = [...new Set(events.map((e) => e.observer_player))].sort((a, b) => a - b);
+  const filtered = events.filter(
+    (e) =>
+      (e.severity || 0) >= Number(minSeverity) &&
+      (playerFilter === "all" || String(e.observer_player) === playerFilter)
+  );
 
   const stats = [
     ["Frames", match.frames_processed ?? "—"],
@@ -53,10 +73,30 @@ export default function MatchDetail() {
             {match.match_date || "no date"} · {match.camera_type} camera
           </p>
         </div>
-        <Button onClick={analyze} disabled={running} className="rounded-full">
-          {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          {match.status === "complete" ? "Re-run analysis" : "Run analysis"}
-        </Button>
+        <div className="flex gap-2">
+          {events.length > 0 && (
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() =>
+                downloadCsv(
+                  `${match.title.replace(/\s+/g, "_")}_blindspots.csv`,
+                  events.map((e) => ({
+                    minute: e.minute, observer: e.observer_player, missed: e.missed_player,
+                    severity: e.severity, distance_m: e.distance_m, angle_deg: e.angle_deg,
+                    scan_quality: e.scan_quality, feedback: e.feedback,
+                  }))
+                )
+              }
+            >
+              <Download className="mr-2 h-4 w-4" /> Export
+            </Button>
+          )}
+          <Button onClick={analyze} disabled={running} className="rounded-full">
+            {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {match.status === "complete" ? "Re-run analysis" : "Run analysis"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
@@ -68,9 +108,7 @@ export default function MatchDetail() {
         ))}
       </div>
 
-      {match.video_url && (
-        <video src={match.video_url} controls className="w-full rounded-3xl border border-border/60" />
-      )}
+      <MatchVideoPlayer match={match} seekSeconds={seek} />
 
       {match.summary && (
         <section className="rounded-3xl border border-emerald-400/20 bg-emerald-400/5 p-6">
@@ -81,33 +119,43 @@ export default function MatchDetail() {
         </section>
       )}
 
+      {events.length > 0 && <MatchCharts events={events} />}
+
       <section className="space-y-3">
-        <h2 className="font-heading text-sm uppercase tracking-[0.25em] text-muted-foreground">
-          Key blindspot moments
-        </h2>
-        {events.length === 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-heading text-sm uppercase tracking-[0.25em] text-muted-foreground">
+            Key blindspot moments
+          </h2>
+          {events.length > 0 && (
+            <div className="flex gap-2">
+              <Select value={playerFilter} onValueChange={setPlayerFilter}>
+                <SelectTrigger className="w-[140px] rounded-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All players</SelectItem>
+                  {playerNumbers.map((n) => (
+                    <SelectItem key={n} value={String(n)}>Player #{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={minSeverity} onValueChange={setMinSeverity}>
+                <SelectTrigger className="w-[150px] rounded-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Any severity</SelectItem>
+                  <SelectItem value="0.5">50%+ severity</SelectItem>
+                  <SelectItem value="0.75">Critical only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Run the analysis to surface the moments where players missed what they could have seen.
+            {events.length === 0
+              ? "Run the analysis to surface the moments where players missed what they could have seen."
+              : "No moments match these filters."}
           </p>
         ) : (
-          events.map((e) => (
-            <div key={e.id} className="flex gap-4 rounded-2xl border border-border/60 bg-card/40 p-5">
-              <div className="w-14 shrink-0 text-center">
-                <p className="font-display text-xl">{Math.round(e.minute)}'</p>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm leading-snug">{e.feedback}</p>
-                <p className="mt-2 text-[11px] uppercase tracking-widest text-muted-foreground">
-                  #{e.observer_player} missed #{e.missed_player} · {e.distance_m?.toFixed(1)}m ·{" "}
-                  {Math.round(e.angle_deg)}° · scan {e.scan_quality?.toFixed(2)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-red-300">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="font-display text-lg">{Math.round((e.severity || 0) * 100)}%</span>
-              </div>
-            </div>
-          ))
+          filtered.map((e) => <BlindspotMoment key={e.id} event={e} onPlay={setSeek} />)
         )}
       </section>
     </div>

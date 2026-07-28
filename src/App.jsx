@@ -11,6 +11,7 @@ import Dashboard from '@/pages/Dashboard';
 import Matches from '@/pages/Matches';
 import MatchDetail from '@/pages/MatchDetail';
 import Simulator from '@/pages/Simulator';
+import Players from '@/pages/Players';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -42,6 +43,7 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/matches" element={<Matches />} />
         <Route path="/matches/:id" element={<MatchDetail />} />
+        <Route path="/players" element={<Players />} />
         <Route path="/simulator" element={<Simulator />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

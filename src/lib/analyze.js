@@ -14,6 +14,7 @@ Match: ${match.title}
 Opponent: ${match.opponent || "unknown"}
 Competition: ${match.competition || "unknown"}
 Camera: ${match.camera_type}
+Footage: ${match.youtube_url || match.video_url || "none attached"}
 Coach notes: ${match.notes || "none"}
 
 Return 8-14 key moments spread across 90 minutes, each with observer shirt number, missed shirt number,

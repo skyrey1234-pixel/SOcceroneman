@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,31 +11,42 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2 } from "lucide-react";
+import FileDropzone from "./FileDropzone";
+import { youtubeId, youtubeThumb } from "@/lib/video";
+import { Plus, Loader2, Youtube } from "lucide-react";
+
+const EMPTY = {
+  title: "", opponent: "", match_date: "", competition: "",
+  camera_type: "broadcast", notes: "", youtube_url: "",
+};
 
 export default function UploadMatchDialog({ onCreated }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    title: "", opponent: "", match_date: "", competition: "",
-    camera_type: "broadcast", notes: "",
-  });
+  const [tab, setTab] = useState("file");
+  const [form, setForm] = useState(EMPTY);
   const [file, setFile] = useState(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const ytValid = !!youtubeId(form.youtube_url);
+  const canSave = form.title && (tab === "file" ? true : ytValid);
 
   const submit = async () => {
-    if (!form.title) return;
     setSaving(true);
     let video_url;
-    if (file) {
+    if (tab === "file" && file) {
       const res = await base44.integrations.Core.UploadFile({ file });
       video_url = res.file_url;
     }
-    const match = await base44.entities.Match.create({ ...form, video_url, status: "queued" });
+    const match = await base44.entities.Match.create({
+      ...form,
+      youtube_url: tab === "youtube" ? form.youtube_url : undefined,
+      video_url,
+      status: "queued",
+    });
     setSaving(false);
     setOpen(false);
-    setForm({ title: "", opponent: "", match_date: "", competition: "", camera_type: "broadcast", notes: "" });
+    setForm(EMPTY);
     setFile(null);
     onCreated?.(match);
   };
@@ -43,14 +55,48 @@ export default function UploadMatchDialog({ onCreated }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="rounded-full">
-          <Plus className="mr-2 h-4 w-4" /> Add match
+          <Plus className="mr-2 h-4 w-4" /> Add footage
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading">Upload match footage</DialogTitle>
+          <DialogTitle className="font-heading">Add match footage</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-2">
+
+        <Tabs value={tab} onValueChange={setTab} className="mt-2">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="file">Upload video</TabsTrigger>
+            <TabsTrigger value="youtube">YouTube link</TabsTrigger>
+          </TabsList>
+          <TabsContent value="file" className="pt-4">
+            <FileDropzone file={file} onFile={setFile} />
+          </TabsContent>
+          <TabsContent value="youtube" className="space-y-3 pt-4">
+            <div className="grid gap-2">
+              <Label>YouTube URL</Label>
+              <Input
+                value={form.youtube_url}
+                onChange={set("youtube_url")}
+                placeholder="https://www.youtube.com/watch?v=…"
+              />
+            </div>
+            {ytValid ? (
+              <img
+                src={youtubeThumb(form.youtube_url)}
+                alt="Video preview"
+                className="w-full rounded-2xl border border-border/60"
+              />
+            ) : (
+              form.youtube_url && (
+                <p className="flex items-center gap-2 text-xs text-red-300">
+                  <Youtube className="h-4 w-4" /> That doesn't look like a YouTube link.
+                </p>
+              )
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <div className="grid gap-4 pt-4">
           <div className="grid gap-2">
             <Label>Match title</Label>
             <Input value={form.title} onChange={set("title")} placeholder="U18 vs Riverside" />
@@ -86,10 +132,6 @@ export default function UploadMatchDialog({ onCreated }) {
             </div>
           </div>
           <div className="grid gap-2">
-            <Label>Video file (optional)</Label>
-            <Input type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-          </div>
-          <div className="grid gap-2">
             <Label>Coach notes</Label>
             <Textarea
               value={form.notes}
@@ -98,8 +140,9 @@ export default function UploadMatchDialog({ onCreated }) {
             />
           </div>
         </div>
+
         <DialogFooter>
-          <Button onClick={submit} disabled={saving || !form.title} className="rounded-full">
+          <Button onClick={submit} disabled={saving || !canSave} className="rounded-full">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save match
           </Button>

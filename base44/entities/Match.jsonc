@@ -18,6 +18,9 @@
     "video_url": {
       "type": "string"
     },
+    "youtube_url": {
+      "type": "string"
+    },
     "camera_type": {
       "type": "string",
       "enum": [

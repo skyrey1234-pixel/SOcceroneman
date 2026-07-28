@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Eye, AlertTriangle, Calendar } from "lucide-react";
+import { youtubeThumb } from "@/lib/video";
 
 export default function MatchCard({ match }) {
   return (
@@ -9,6 +10,13 @@ export default function MatchCard({ match }) {
       to={`/matches/${match.id}`}
       className="group block rounded-2xl border border-border/60 bg-card/60 p-6 transition-all hover:-translate-y-0.5 hover:border-emerald-400/40"
     >
+      {youtubeThumb(match.youtube_url) && (
+        <img
+          src={youtubeThumb(match.youtube_url)}
+          alt=""
+          className="mb-5 aspect-video w-full rounded-xl object-cover opacity-80 transition-opacity group-hover:opacity-100"
+        />
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="font-heading text-lg tracking-tight">{match.title}</h3>
