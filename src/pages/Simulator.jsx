@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import TacticalPitch from "@/components/pitch/TacticalPitch";
 import PlayerInspector from "@/components/pitch/PlayerInspector";
 import BlindspotFeed from "@/components/pitch/BlindspotFeed";
+import CorrectPlaySpotlight from "@/components/pitch/CorrectPlaySpotlight";
 import { Button } from "@/components/ui/button";
 import { computeBeliefStates, allBlindspots, defaultFormation } from "@/lib/blindspot";
 import { RotateCcw, EyeOff } from "lucide-react";
@@ -89,6 +90,13 @@ export default function Simulator() {
           </section>
         </div>
       </div>
+
+      <section className="rounded-3xl border border-border/60 bg-card/40 p-6">
+        <h2 className="mb-5 font-heading text-sm uppercase tracking-[0.25em] text-muted-foreground">
+          Correct play animation
+        </h2>
+        <CorrectPlaySpotlight />
+      </section>
     </div>
   );
 }
