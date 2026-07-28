@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { youtubeId } from "@/lib/video";
+import YouTubeEmbed from "./YouTubeEmbed";
 
 export default function MatchVideoPlayer({ match, seekSeconds }) {
   const videoRef = useRef(null);
@@ -13,19 +14,7 @@ export default function MatchVideoPlayer({ match, seekSeconds }) {
   }, [seekSeconds, ytId]);
 
   if (ytId) {
-    const start = Math.max(0, Math.round(seekSeconds || 0));
-    return (
-      <div className="aspect-video w-full overflow-hidden rounded-3xl border border-border/60">
-        <iframe
-          key={start}
-          title={match.title}
-          src={`https://www.youtube.com/embed/${ytId}?start=${start}${seekSeconds != null ? "&autoplay=1" : ""}`}
-          allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen"
-          allowFullScreen
-          className="h-full w-full"
-        />
-      </div>
-    );
+    return <YouTubeEmbed videoId={ytId} seekSeconds={seekSeconds} />;
   }
 
   if (match.video_url) {
