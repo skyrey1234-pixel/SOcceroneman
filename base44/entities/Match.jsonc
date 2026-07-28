@@ -1,0 +1,61 @@
+{
+  "name": "Match",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "opponent": {
+      "type": "string"
+    },
+    "match_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "competition": {
+      "type": "string"
+    },
+    "video_url": {
+      "type": "string"
+    },
+    "camera_type": {
+      "type": "string",
+      "enum": [
+        "broadcast",
+        "endzone",
+        "phone"
+      ],
+      "default": "broadcast"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "analyzing",
+        "complete"
+      ],
+      "default": "queued"
+    },
+    "frames_processed": {
+      "type": "number"
+    },
+    "unique_players": {
+      "type": "number"
+    },
+    "total_blindspots": {
+      "type": "number"
+    },
+    "avg_scan_quality": {
+      "type": "number"
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

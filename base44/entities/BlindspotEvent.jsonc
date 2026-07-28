@@ -1,0 +1,36 @@
+{
+  "name": "BlindspotEvent",
+  "type": "object",
+  "properties": {
+    "match_id": {
+      "type": "string"
+    },
+    "minute": {
+      "type": "number"
+    },
+    "observer_player": {
+      "type": "number"
+    },
+    "missed_player": {
+      "type": "number"
+    },
+    "severity": {
+      "type": "number"
+    },
+    "distance_m": {
+      "type": "number"
+    },
+    "angle_deg": {
+      "type": "number"
+    },
+    "scan_quality": {
+      "type": "number"
+    },
+    "feedback": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "match_id"
+  ]
+}
