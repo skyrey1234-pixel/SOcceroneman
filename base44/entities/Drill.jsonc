@@ -1,0 +1,51 @@
+{
+  "name": "Drill",
+  "type": "object",
+  "properties": {
+    "player_number": {
+      "type": "number"
+    },
+    "weakness": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "focus": {
+      "type": "string"
+    },
+    "duration_min": {
+      "type": "number"
+    },
+    "players_needed": {
+      "type": "number"
+    },
+    "setup": {
+      "type": "string"
+    },
+    "how_it_runs": {
+      "type": "string"
+    },
+    "coaching_points": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "where_we_messed_up": {
+      "type": "string"
+    },
+    "how_elite_players_do_it": {
+      "type": "string"
+    },
+    "progression": {
+      "type": "string"
+    },
+    "success_metric": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

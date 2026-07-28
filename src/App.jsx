@@ -14,6 +14,8 @@ import Simulator from '@/pages/Simulator';
 import Players from '@/pages/Players';
 import PlayerProfile from '@/pages/PlayerProfile';
 import WarRoom from '@/pages/WarRoom';
+import Drills from '@/pages/Drills';
+import Compare from '@/pages/Compare';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,6 +50,8 @@ const AuthenticatedApp = () => {
         <Route path="/players" element={<Players />} />
         <Route path="/players/:number" element={<PlayerProfile />} />
         <Route path="/war-room" element={<WarRoom />} />
+        <Route path="/drills" element={<Drills />} />
+        <Route path="/compare" element={<Compare />} />
         <Route path="/simulator" element={<Simulator />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
