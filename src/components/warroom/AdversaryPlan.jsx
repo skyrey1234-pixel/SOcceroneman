@@ -2,6 +2,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Shield, Target, UserSearch } from "lucide-react";
+import ChalkboardPlay from "@/components/pitch/ChalkboardPlay";
 
 export default function AdversaryPlan({ plan }) {
   return (
@@ -41,6 +42,15 @@ export default function AdversaryPlan({ plan }) {
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
               <span className="text-emerald-300">Counter: </span>{r.our_counter}
             </p>
+            {r.counter_play?.movements?.length > 0 && (
+              <div className="mt-4">
+                <ChalkboardPlay
+                  option={r.counter_play}
+                  startLabel={r.counter_play.start_label}
+                  endLabel={r.counter_play.end_label}
+                />
+              </div>
+            )}
           </div>
         ))}
       </section>
