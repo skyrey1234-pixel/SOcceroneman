@@ -1,12 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import UploadMatchDialog from "@/components/matches/UploadMatchDialog";
 import MatchCard from "@/components/matches/MatchCard";
 import { Button } from "@/components/ui/button";
 import { Radar, AlertTriangle, Eye, Film } from "lucide-react";
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
   const { data: matches = [] } = useQuery({
     queryKey: ["matches"],
     queryFn: () => base44.entities.Match.list("-created_date", 6),
@@ -36,7 +38,10 @@ export default function Dashboard() {
           missed and the coaching cue that fixes it.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Button asChild className="rounded-full">
+          <UploadMatchDialog
+            onCreated={() => queryClient.invalidateQueries({ queryKey: ["matches"] })}
+          />
+          <Button asChild variant="outline" className="rounded-full">
             <Link to="/simulator"><Radar className="mr-2 h-4 w-4" /> Open live pitch</Link>
           </Button>
           <Button asChild variant="outline" className="rounded-full">
