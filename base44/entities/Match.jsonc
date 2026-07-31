@@ -38,7 +38,8 @@
       "enum": [
         "queued",
         "analyzing",
-        "complete"
+        "complete",
+        "failed"
       ],
       "default": "queued"
     },
@@ -56,6 +57,10 @@
     },
     "summary": {
       "type": "string"
+    },
+    "analysis_error": {
+      "type": "string",
+      "description": "Most recent user-safe failure message from match analysis"
     }
   },
   "required": [

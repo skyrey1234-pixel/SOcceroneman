@@ -2,6 +2,7 @@ import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import PlayerProfileCard from "@/components/players/PlayerProfileCard";
+import { isApprovedEvent } from "@/lib/review";
 import { Users } from "lucide-react";
 
 export default function Players() {
@@ -10,26 +11,27 @@ export default function Players() {
     queryFn: () => base44.entities.BlindspotEvent.list("-created_date", 500),
   });
 
+  const approvedEvents = events.filter(isApprovedEvent);
   const profiles = Object.values(
-    events.reduce((acc, e) => {
-      const k = e.observer_player;
-      if (k == null) return acc;
-      acc[k] = acc[k] || { number: k, events: [], matches: new Set() };
-      acc[k].events.push(e);
-      acc[k].matches.add(e.match_id);
+    approvedEvents.reduce((acc, event) => {
+      const playerNumber = event.observer_player;
+      if (playerNumber == null) return acc;
+      acc[playerNumber] = acc[playerNumber] || { number: playerNumber, events: [], matches: new Set() };
+      acc[playerNumber].events.push(event);
+      acc[playerNumber].matches.add(event.match_id);
       return acc;
     }, {})
   )
-    .map((p) => ({
-      number: p.number,
-      count: p.events.length,
-      matches: p.matches.size,
-      avgSeverity: p.events.reduce((s, e) => s + (e.severity || 0), 0) / p.events.length,
+    .map((profile) => ({
+      number: profile.number,
+      count: profile.events.length,
+      matches: profile.matches.size,
+      avgSeverity: profile.events.reduce((sum, event) => sum + (event.severity || 0), 0) / profile.events.length,
       avgScan:
-        p.events.reduce((s, e) => s + (e.scan_quality || 0), 0) / p.events.length || 0,
+        profile.events.reduce((sum, event) => sum + (event.scan_quality || 0), 0) / profile.events.length || 0,
       behindShare:
-        p.events.filter((e) => Math.abs(e.angle_deg || 0) > 100).length / p.events.length,
-      worst: p.events.slice().sort((a, b) => (b.severity || 0) - (a.severity || 0))[0],
+        profile.events.filter((event) => Math.abs(event.angle_deg || 0) > 100).length / profile.events.length,
+      worst: profile.events.slice().sort((a, b) => (b.severity || 0) - (a.severity || 0))[0],
     }))
     .sort((a, b) => b.count - a.count);
 
@@ -39,7 +41,7 @@ export default function Players() {
         <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">Squad</p>
         <h1 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">Scanning profiles</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          Every player's blindspot habits aggregated across analyzed matches — who scans, who locks on
+          Coach-approved blindspot habits aggregated across reviewed matches — who scans, who locks on
           the ball, and who keeps getting beaten behind the shoulder.
         </p>
       </div>
@@ -49,12 +51,14 @@ export default function Players() {
       ) : profiles.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-border/60 p-16 text-center">
           <Users className="mx-auto mb-4 h-8 w-8 text-muted-foreground" />
-          <p className="font-heading">No profiles yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Analyze a match to build player profiles.</p>
+          <p className="font-heading">No coach-approved profiles yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review a match and approve the blindspot moments you trust to build player profiles.
+          </p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {profiles.map((p) => <PlayerProfileCard key={p.number} profile={p} />)}
+          {profiles.map((profile) => <PlayerProfileCard key={profile.number} profile={profile} />)}
         </div>
       )}
     </div>

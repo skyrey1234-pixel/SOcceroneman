@@ -56,6 +56,25 @@
     },
     "feedback": {
       "type": "string"
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "dismissed"
+      ],
+      "default": "pending",
+      "description": "Coach review state for this AI-generated analysis event"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp recorded when a coach last changed the review state"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Authenticated coach user ID that last reviewed the event"
     }
   },
   "required": [

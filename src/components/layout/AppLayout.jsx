@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { LayoutDashboard, Film, Radar, Users, Swords, Dumbbell, Columns2 } from "lucide-react";
+import { featureFlags } from "@/lib/app-params";
 
 const nav = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
@@ -8,7 +9,7 @@ const nav = [
   { to: "/players", label: "Players", icon: Users },
   { to: "/drills", label: "Drills", icon: Dumbbell },
   { to: "/compare", label: "Compare", icon: Columns2 },
-  { to: "/war-room", label: "War Room", icon: Swords },
+  { to: "/war-room", label: "War Room Beta", icon: Swords, feature: "warRoom" },
   { to: "/simulator", label: "Live Pitch", icon: Radar },
 ];
 
@@ -30,7 +31,7 @@ export default function AppLayout() {
             </div>
           </Link>
           <nav className="flex items-center gap-1">
-            {nav.map(({ to, label, icon: Icon }) => {
+            {nav.filter((item) => !item.feature || featureFlags[item.feature]).map(({ to, label, icon: Icon }) => {
               const active = pathname === to;
               return (
                 <Link

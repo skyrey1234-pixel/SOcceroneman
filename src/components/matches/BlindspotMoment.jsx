@@ -1,6 +1,14 @@
 import React from "react";
-import { AlertTriangle, Play, Check, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Clock3, Play, RotateCcw, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import CorrectPlayPanel from "./CorrectPlayPanel";
+import {
+  isApprovedEvent,
+  isDismissedEvent,
+  isPendingReview,
+  REVIEW_STATUS,
+  reviewStatusLabel,
+} from "@/lib/review";
 
 export function timestampOf(event) {
   return Math.max(0, Math.round((event.minute || 0) * 60 + (event.second || 0)));
@@ -12,13 +20,22 @@ export function formatClock(totalSeconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function BlindspotMoment({ event, match, onPlay }) {
+export default function BlindspotMoment({ event, match, onPlay, onReview, reviewing = false }) {
   const sev = Math.round((event.severity || 0) * 100);
   const tone = sev >= 75 ? "text-red-300" : sev >= 50 ? "text-amber-300" : "text-emerald-300";
   const ts = timestampOf(event);
+  const approved = isApprovedEvent(event);
+  const dismissed = isDismissedEvent(event);
+  const pending = isPendingReview(event);
+
+  const statusClass = approved
+    ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+    : dismissed
+      ? "border-border/60 bg-muted/40 text-muted-foreground"
+      : "border-amber-400/30 bg-amber-400/10 text-amber-200";
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border/60 bg-card/40 p-5 transition-colors hover:border-emerald-400/40">
+    <div className={`space-y-4 rounded-2xl border bg-card/40 p-5 transition-colors hover:border-emerald-400/40 ${dismissed ? "opacity-70" : "border-border/60"}`}>
       <div className="flex gap-4">
         <button
           onClick={() => onPlay(Math.max(0, ts - 5))}
@@ -30,8 +47,8 @@ export default function BlindspotMoment({ event, match, onPlay }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm leading-snug">{event.feedback}</p>
           <p className="mt-2 text-[11px] uppercase tracking-widest text-muted-foreground">
-            {formatClock(ts)} · #{event.observer_player} missed #{event.missed_player} ·{" "}
-            {event.distance_m?.toFixed(1)}m · {Math.round(event.angle_deg || 0)}° · scan{" "}
+            {formatClock(ts)} · #{event.observer_player} missed #{event.missed_player} · {" "}
+            {event.distance_m?.toFixed(1)}m · {Math.round(event.angle_deg || 0)}° · scan {" "}
             {event.scan_quality?.toFixed(2)}
             {event.phase ? ` · ${event.phase.replace(/_/g, " ")}` : ""}
           </p>
@@ -40,6 +57,47 @@ export default function BlindspotMoment({ event, match, onPlay }) {
           <AlertTriangle className="h-4 w-4" />
           <span className="font-display text-lg">{sev}%</span>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-y border-border/50 py-3">
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider ${statusClass}`}>
+          {approved ? <CheckCircle2 className="h-3.5 w-3.5" /> : dismissed ? <X className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
+          {reviewStatusLabel(event)}
+        </span>
+
+        {pending && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="h-8 rounded-full bg-emerald-400 px-3 text-xs text-emerald-950 hover:bg-emerald-300"
+              disabled={reviewing}
+              onClick={() => onReview?.(event, REVIEW_STATUS.APPROVED)}
+            >
+              <Check className="mr-1 h-3.5 w-3.5" /> Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-full px-3 text-xs"
+              disabled={reviewing}
+              onClick={() => onReview?.(event, REVIEW_STATUS.DISMISSED)}
+            >
+              <X className="mr-1 h-3.5 w-3.5" /> Dismiss
+            </Button>
+          </div>
+        )}
+
+        {dismissed && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-full px-3 text-xs"
+            disabled={reviewing}
+            onClick={() => onReview?.(event, REVIEW_STATUS.PENDING)}
+          >
+            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Restore to review
+          </Button>
+        )}
       </div>
 
       {(event.what_went_right || event.what_went_wrong) && (
@@ -59,7 +117,7 @@ export default function BlindspotMoment({ event, match, onPlay }) {
         </div>
       )}
 
-      <CorrectPlayPanel event={event} match={match} />
+      {!dismissed && <CorrectPlayPanel event={event} match={match} />}
     </div>
   );
 }

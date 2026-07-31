@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import WeaknessPicker from "@/components/drills/WeaknessPicker";
 import DrillCard from "@/components/drills/DrillCard";
 import { generateDrills, weaknessesFor } from "@/lib/drills";
+import { isApprovedEvent } from "@/lib/review";
 
 export default function Drills() {
   const qc = useQueryClient();
@@ -20,28 +21,32 @@ export default function Drills() {
     queryFn: () => base44.entities.Drill.list("-created_date", 60),
   });
 
+  const approvedEvents = useMemo(() => events.filter(isApprovedEvent), [events]);
   const players = useMemo(
     () =>
-      [...new Set(events.map((e) => e.observer_player).filter((n) => n != null))].sort(
+      [...new Set(approvedEvents.map((event) => event.observer_player).filter((number) => number != null))].sort(
         (a, b) => a - b
       ),
-    [events]
+    [approvedEvents]
   );
   const playerEvents = useMemo(
-    () => events.filter((e) => e.observer_player === player),
-    [events, player]
+    () => approvedEvents.filter((event) => event.observer_player === player),
+    [approvedEvents, player]
   );
   const weaknesses = useMemo(() => weaknessesFor(playerEvents), [playerEvents]);
 
   const visibleDrills = player
-    ? drills.filter((d) => d.player_number === player)
+    ? drills.filter((drill) => drill.player_number === player)
     : drills;
 
   const run = async () => {
     setRunning(true);
-    await generateDrills({ playerNumber: player, weakness, events: playerEvents });
-    await qc.invalidateQueries({ queryKey: ["drills"] });
-    setRunning(false);
+    try {
+      await generateDrills({ playerNumber: player, weakness, events: playerEvents });
+      await qc.invalidateQueries({ queryKey: ["drills"] });
+    } finally {
+      setRunning(false);
+    }
   };
 
   return (
@@ -52,33 +57,42 @@ export default function Drills() {
           Blindspots → training drills
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Pick a player and the weakness the video analysis keeps flagging. The engine writes
+          Pick a player and the weakness the coach has verified across match review. The engine writes
           session-ready drills, plus exactly where it went wrong and how elite players solve it.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[340px,1fr]">
-        <WeaknessPicker
-          players={players}
-          player={player}
-          onPlayer={(n) => { setPlayer(n); setWeakness(null); }}
-          weaknesses={weaknesses}
-          weakness={weakness}
-          onWeakness={setWeakness}
-          onGenerate={run}
-          running={running}
-        />
-
-        <div className="space-y-5">
-          {visibleDrills.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-border/60 p-16 text-center text-sm text-muted-foreground">
-              No drills yet — choose a weakness and build a session.
-            </div>
-          ) : (
-            visibleDrills.map((d) => <DrillCard key={d.id} drill={d} />)
-          )}
+      {approvedEvents.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-border/60 p-16 text-center">
+          <p className="font-heading">No coach-approved moments yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review a match and approve the AI findings you trust before generating a player-development plan.
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[340px,1fr]">
+          <WeaknessPicker
+            players={players}
+            player={player}
+            onPlayer={(number) => { setPlayer(number); setWeakness(null); }}
+            weaknesses={weaknesses}
+            weakness={weakness}
+            onWeakness={setWeakness}
+            onGenerate={run}
+            running={running}
+          />
+
+          <div className="space-y-5">
+            {visibleDrills.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-border/60 p-16 text-center text-sm text-muted-foreground">
+                No drills yet — choose a weakness and build a session.
+              </div>
+            ) : (
+              visibleDrills.map((drill) => <DrillCard key={drill.id} drill={drill} />)
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

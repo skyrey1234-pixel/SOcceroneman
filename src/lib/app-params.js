@@ -52,3 +52,13 @@ const getAppParams = () => {
 export const appParams = {
 	...getAppParams()
 }
+
+const isEnabled = (value) => ["1", "true", "yes", "on"].includes(String(value || "").toLowerCase());
+
+// Tactical simulation remains available for controlled testing, but is off by default
+// while the core match-review workflow is being validated.
+export const featureFlags = {
+	warRoom: isEnabled(
+		getAppParamValue("war_room_beta", { defaultValue: import.meta.env.VITE_WAR_ROOM_BETA })
+	),
+}
