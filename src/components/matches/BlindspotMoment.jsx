@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, Check, CheckCircle2, Clock3, Play, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Clock3, Play, RotateCcw, X, Video, ScanSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CorrectPlayPanel from "./CorrectPlayPanel";
 import {
@@ -9,6 +9,7 @@ import {
   REVIEW_STATUS,
   reviewStatusLabel,
 } from "@/lib/review";
+import { formatVideoTimestamp, hasVisualAnnotation } from "@/lib/evidence";
 
 export function timestampOf(event) {
   return Math.max(0, Math.round((event.minute || 0) * 60 + (event.second || 0)));
@@ -38,16 +39,16 @@ export default function BlindspotMoment({ event, match, onPlay, onReview, review
     <div className={`space-y-4 rounded-2xl border bg-card/40 p-5 transition-colors hover:border-emerald-400/40 ${dismissed ? "opacity-70" : "border-border/60"}`}>
       <div className="flex gap-4">
         <button
-          onClick={() => onPlay(Math.max(0, ts - 5))}
+          onClick={() => onPlay?.(event)}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-emerald-300 hover:bg-emerald-400/25"
-          title={`Jump to ${formatClock(ts)}`}
+          title={`Review evidence at ${formatClock(ts)}`}
         >
           <Play className="h-4 w-4" />
         </button>
         <div className="min-w-0 flex-1">
           <p className="text-sm leading-snug">{event.feedback}</p>
           <p className="mt-2 text-[11px] uppercase tracking-widest text-muted-foreground">
-            {formatClock(ts)} · #{event.observer_player} missed #{event.missed_player} · {" "}
+            {formatVideoTimestamp(event.timestamp_seconds ?? ts)} · #{event.observer_player} missed #{event.missed_player} · {" "}
             {event.distance_m?.toFixed(1)}m · {Math.round(event.angle_deg || 0)}° · scan {" "}
             {event.scan_quality?.toFixed(2)}
             {event.phase ? ` · ${event.phase.replace(/_/g, " ")}` : ""}
@@ -60,10 +61,22 @@ export default function BlindspotMoment({ event, match, onPlay, onReview, review
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-y border-border/50 py-3">
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider ${statusClass}`}>
-          {approved ? <CheckCircle2 className="h-3.5 w-3.5" /> : dismissed ? <X className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
-          {reviewStatusLabel(event)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider ${statusClass}`}>
+            {approved ? <CheckCircle2 className="h-3.5 w-3.5" /> : dismissed ? <X className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
+            {reviewStatusLabel(event)}
+          </span>
+          {event.evidence_source === "computer_vision" && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/30 bg-blue-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-blue-300">
+              <Video className="h-3 w-3" /> CV Evidence
+            </span>
+          )}
+          {hasVisualAnnotation(event) && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-emerald-300">
+              <ScanSearch className="h-3 w-3" /> Visual tracking
+            </span>
+          )}
+        </div>
 
         {pending && (
           <div className="flex items-center gap-2">

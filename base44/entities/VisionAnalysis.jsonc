@@ -1,0 +1,72 @@
+{
+  "name": "VisionAnalysis",
+  "type": "object",
+  "properties": {
+    "match_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_configured",
+        "queued",
+        "processing",
+        "complete",
+        "failed"
+      ],
+      "default": "not_configured"
+    },
+    "provider": {
+      "type": "string",
+      "description": "The deployed vision provider or adapter identifier"
+    },
+    "provider_job_id": {
+      "type": "string"
+    },
+    "model_name": {
+      "type": "string"
+    },
+    "model_version": {
+      "type": "string"
+    },
+    "sample_fps": {
+      "type": "number"
+    },
+    "video_duration_seconds": {
+      "type": "number"
+    },
+    "overall_confidence": {
+      "type": "number"
+    },
+    "events_created": {
+      "type": "number",
+      "default": 0
+    },
+    "result_url": {
+      "type": "string",
+      "description": "Optional URL to a durable, provider-generated analysis artifact"
+    },
+    "result_hash": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "match_id",
+    "status"
+  ]
+}

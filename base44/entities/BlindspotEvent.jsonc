@@ -11,6 +11,10 @@
     "second": {
       "type": "number"
     },
+    "timestamp_seconds": {
+      "type": "number",
+      "description": "Absolute match time in seconds used for footage seeking and deep links"
+    },
     "observer_player": {
       "type": "number"
     },
@@ -57,6 +61,65 @@
     "feedback": {
       "type": "string"
     },
+    "evidence_source": {
+      "type": "string",
+      "enum": [
+        "ai_draft",
+        "coach_marked",
+        "computer_vision"
+      ],
+      "default": "ai_draft",
+      "description": "Explains whether this is an AI draft, coach-created moment, or measured vision output"
+    },
+    "evidence_confidence": {
+      "type": "number",
+      "description": "Model or coach confidence from 0 to 1; only computer-vision values are measured"
+    },
+    "evidence_start_seconds": {
+      "type": "number"
+    },
+    "evidence_end_seconds": {
+      "type": "number"
+    },
+    "evidence_note": {
+      "type": "string"
+    },
+    "evidence_thumbnail_url": {
+      "type": "string"
+    },
+    "annotation_state": {
+      "type": "string",
+      "enum": [
+        "none",
+        "draft",
+        "verified"
+      ],
+      "default": "none"
+    },
+    "observer_box": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" }
+      }
+    },
+    "missed_player_box": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" }
+      }
+    },
+    "vision_analysis_id": {
+      "type": "string"
+    },
+    "vision_track_id": {
+      "type": "string"
+    },
     "review_status": {
       "type": "string",
       "enum": [
@@ -65,7 +128,7 @@
         "dismissed"
       ],
       "default": "pending",
-      "description": "Coach review state for this AI-generated analysis event"
+      "description": "Coach review state for this analysis event"
     },
     "reviewed_at": {
       "type": "string",

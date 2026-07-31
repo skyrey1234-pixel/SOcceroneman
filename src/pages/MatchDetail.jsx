@@ -14,7 +14,9 @@ import BlindspotMoment from "@/components/matches/BlindspotMoment";
 import { runAnalysis } from "@/lib/analyze";
 import { downloadCsv } from "@/lib/exportCsv";
 import { isApprovedEvent, isDismissedEvent, isPendingReview, REVIEW_STATUS } from "@/lib/review";
-import { ArrowLeft, Download, EyeOff, Loader2, Sparkles, TriangleAlert } from "lucide-react";
+import { VISION_STATUS, visionStatusLabel, requestVisionAnalysis } from "@/lib/vision";
+import { eventTimestampSeconds } from "@/lib/evidence";
+import { ArrowLeft, Download, EyeOff, Loader2, Sparkles, TriangleAlert, Video } from "lucide-react";
 
 export default function MatchDetail() {
   const { id } = useParams();
@@ -22,14 +24,26 @@ export default function MatchDetail() {
   const [running, setRunning] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
   const [seek, setSeek] = useState(null);
+  const [selectedEvidence, setSelectedEvidence] = useState(null);
   const [minSeverity, setMinSeverity] = useState("0");
   const [playerFilter, setPlayerFilter] = useState("all");
   const [showDismissed, setShowDismissed] = useState(false);
+  const [requestingVision, setRequestingVision] = useState(false);
 
   const { data: match } = useQuery({
     queryKey: ["match", id],
     queryFn: () => base44.entities.Match.get(id),
   });
+  const { data: analysisJob } = useQuery({
+    queryKey: ["vision-analysis", match?.vision_analysis_id],
+    queryFn: () => match?.vision_analysis_id ? base44.entities.VisionAnalysis.get(match.vision_analysis_id) : null,
+    enabled: !!match?.vision_analysis_id,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "queued" || status === "processing" ? 5000 : false;
+    },
+  });
+
   const { data: events = [] } = useQuery({
     queryKey: ["events", id],
     queryFn: () => base44.entities.BlindspotEvent.filter({ match_id: id }, "minute"),
@@ -67,6 +81,23 @@ export default function MatchDetail() {
     }
   };
 
+  const requestVision = async () => {
+    setRequestingVision(true);
+    try {
+      const result = await requestVisionAnalysis(match.id);
+      if (!result.configured) {
+        toast({ variant: "destructive", title: "Vision provider not configured", description: result.message });
+      } else {
+        toast({ title: "Vision analysis queued", description: "The external worker will process the footage and return evidence." });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Could not request vision analysis", description: error?.message });
+    } finally {
+      await qc.invalidateQueries({ queryKey: ["match", id] });
+      setRequestingVision(false);
+    }
+  };
+
   const reviewEvent = async (event, reviewStatus) => {
     setReviewingId(event.id);
     try {
@@ -98,6 +129,12 @@ export default function MatchDetail() {
     } finally {
       setReviewingId(null);
     }
+  };
+
+  const playEvidence = (event) => {
+    const timestamp = eventTimestampSeconds(event);
+    setSelectedEvidence(event);
+    setSeek(Math.max(0, timestamp - 2));
   };
 
   const playerNumbers = [...new Set(reviewEvents.map((e) => e.observer_player))]
@@ -132,6 +169,19 @@ export default function MatchDetail() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={requestVision}
+            disabled={requestingVision || match.vision_status === VISION_STATUS.QUEUED || match.vision_status === VISION_STATUS.PROCESSING}
+          >
+            {requestingVision || match.vision_status === VISION_STATUS.QUEUED || match.vision_status === VISION_STATUS.PROCESSING ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Video className="mr-2 h-4 w-4" />
+            )}
+            {visionStatusLabel(match.vision_status)}
+          </Button>
           {approvedEvents.length > 0 && (
             <Button
               variant="outline"
@@ -200,7 +250,7 @@ export default function MatchDetail() {
         ))}
       </div>
 
-      <MatchVideoPlayer match={match} seekSeconds={seek} />
+      <MatchVideoPlayer match={match} seekSeconds={seek} selectedEvidence={selectedEvidence} />
 
       {match.summary && (
         <section className="rounded-3xl border border-emerald-400/20 bg-emerald-400/5 p-6">
@@ -272,7 +322,7 @@ export default function MatchDetail() {
               key={event.id}
               event={event}
               match={match}
-              onPlay={setSeek}
+              onPlay={playEvidence}
               onReview={reviewEvent}
               reviewing={reviewingId === event.id}
             />

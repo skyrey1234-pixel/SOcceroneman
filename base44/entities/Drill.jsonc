@@ -2,6 +2,17 @@
   "name": "Drill",
   "type": "object",
   "properties": {
+    "created_by": {
+      "type": "string",
+      "description": "Coach account that generated or assigned this drill"
+    },
+    "source_match_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Approved evidence matches used to create this drill"
+    },
     "player_number": {
       "type": "number"
     },
@@ -43,6 +54,15 @@
     },
     "success_metric": {
       "type": "string"
+    },
+    "training_block_id": {
+      "type": "string"
+    },
+    "scheduled_week": {
+      "type": "number"
+    },
+    "session_target": {
+      "type": "number"
     }
   },
   "required": [

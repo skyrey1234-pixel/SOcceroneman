@@ -16,6 +16,7 @@ import PlayerProfile from '@/pages/PlayerProfile';
 import WarRoom from '@/pages/WarRoom';
 import Drills from '@/pages/Drills';
 import Compare from '@/pages/Compare';
+import PublicPlayerReport from '@/pages/PublicPlayerReport';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -59,6 +60,15 @@ const AuthenticatedApp = () => {
   );
 };
 
+const PublicApp = () => {
+  return (
+    <Routes>
+      <Route path="/report/:token" element={<PublicPlayerReport />} />
+      <Route path="*" element={<AuthenticatedApp />} />
+    </Routes>
+  );
+};
+
 
 function App() {
 
@@ -67,7 +77,7 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <AuthenticatedApp />
+          <PublicApp />
         </Router>
         <Toaster />
       </QueryClientProvider>

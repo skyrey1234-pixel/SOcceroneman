@@ -59,10 +59,14 @@ measurable success metric.`,
     },
   });
 
+  const coach = await base44.auth.me().catch(() => null);
+  const sourceMatchIds = [...new Set(events.map((event) => event.match_id).filter(Boolean))];
   const drills = (res.drills || []).map((d) => ({
     ...d,
     player_number: playerNumber,
     weakness,
+    source_match_ids: sourceMatchIds,
+    created_by: coach?.id || coach?.email || "coach",
   }));
 
   return drills.length ? base44.entities.Drill.bulkCreate(drills) : [];

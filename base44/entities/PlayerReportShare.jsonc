@@ -1,0 +1,51 @@
+{
+  "name": "PlayerReportShare",
+  "type": "object",
+  "properties": {
+    "player_number": {
+      "type": "number"
+    },
+    "token": {
+      "type": "string",
+      "description": "High-entropy, revocable bearer token used only in the read-only report URL"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "revoked"
+      ],
+      "default": "active"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "include_drills": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_progress": {
+      "type": "boolean",
+      "default": true
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "scope_match_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Immutable list of matches visible to this bearer link; prevents player-number collisions from mixing coach data"
+    },
+    "last_accessed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "player_number",
+    "token"
+  ]
+}

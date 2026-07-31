@@ -1,0 +1,134 @@
+{
+  "name": "TrainingBlock",
+  "type": "object",
+  "properties": {
+    "created_by": {
+      "type": "string",
+      "description": "Coach account that created the development block"
+    },
+    "source_match_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Approved match evidence included in this player-development block"
+    },
+    "player_number": {
+      "type": "number"
+    },
+    "title": {
+      "type": "string"
+    },
+    "focus": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "active",
+        "complete",
+        "archived"
+      ],
+      "default": "planned"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "duration_weeks": {
+      "type": "number",
+      "default": 4
+    },
+    "baseline": {
+      "type": "object",
+      "properties": {
+        "event_count": {
+          "type": "number"
+        },
+        "match_count": {
+          "type": "number"
+        },
+        "avg_scan_quality": {
+          "type": "number"
+        },
+        "avg_severity": {
+          "type": "number"
+        },
+        "behind_share": {
+          "type": "number"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "retest": {
+      "type": "object",
+      "properties": {
+        "event_count": {
+          "type": "number"
+        },
+        "match_count": {
+          "type": "number"
+        },
+        "avg_scan_quality": {
+          "type": "number"
+        },
+        "avg_severity": {
+          "type": "number"
+        },
+        "behind_share": {
+          "type": "number"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "match_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "baseline_event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "drill_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sessions_planned": {
+      "type": "number",
+      "default": 8
+    },
+    "sessions_completed": {
+      "type": "number",
+      "default": 0
+    },
+    "coach_notes": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "player_number",
+    "title",
+    "focus"
+  ]
+}

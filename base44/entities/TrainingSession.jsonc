@@ -1,0 +1,58 @@
+{
+  "name": "TrainingSession",
+  "type": "object",
+  "properties": {
+    "created_by": {
+      "type": "string",
+      "description": "Coach account that owns this scheduled session"
+    },
+    "training_block_id": {
+      "type": "string"
+    },
+    "player_number": {
+      "type": "number"
+    },
+    "week_number": {
+      "type": "number"
+    },
+    "session_number": {
+      "type": "number"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "complete",
+        "skipped"
+      ],
+      "default": "scheduled"
+    },
+    "drill_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "completion_score": {
+      "type": "number",
+      "description": "Coach-entered session quality score from 0 to 100"
+    },
+    "coach_notes": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "training_block_id",
+    "player_number",
+    "week_number",
+    "session_number"
+  ]
+}

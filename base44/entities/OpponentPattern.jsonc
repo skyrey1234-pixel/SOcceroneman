@@ -1,0 +1,69 @@
+{
+  "name": "OpponentPattern",
+  "type": "object",
+  "properties": {
+    "opponent": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "zone": {
+      "type": "string"
+    },
+    "sample_size": {
+      "type": "number"
+    },
+    "match_count": {
+      "type": "number"
+    },
+    "avg_severity": {
+      "type": "number"
+    },
+    "confidence": {
+      "type": "number"
+    },
+    "event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "match_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "dismissed"
+      ],
+      "default": "pending"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "opponent",
+    "label"
+  ]
+}
