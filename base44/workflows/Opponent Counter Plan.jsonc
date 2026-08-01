@@ -1,0 +1,79 @@
+{
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "opponent_counter_plan",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "detect_pattern": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "detectOpponentPattern",
+            "args": {
+              "plan_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "pattern_found",
+          "x-base44": {
+            "title": "Cross-reference match data",
+            "description": "Find repeated opponent success"
+          }
+        }
+      },
+      {
+        "pattern_found": {
+          "switch": [
+            {
+              "when": "${ .detect_pattern.found == true }",
+              "then": "build_counter"
+            },
+            {
+              "when": "${ true }",
+              "then": "end"
+            }
+          ],
+          "x-base44": {
+            "title": "Pattern succeeded?"
+          }
+        }
+      },
+      {
+        "build_counter": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "counterOpponentPattern",
+            "args": {
+              "plan_id": "${ .trigger.entity_id }",
+              "opponent": "${ .detect_pattern.opponent }",
+              "phase": "${ .detect_pattern.phase }",
+              "summary": "${ .detect_pattern.summary }",
+              "anchor_event_id": "${ .detect_pattern.anchor_event_id }",
+              "anchor_match_id": "${ .detect_pattern.anchor_match_id }",
+              "observer_player": "${ .detect_pattern.observer_player }",
+              "match_ids": "${ .detect_pattern.match_ids }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Create counter play, drill & alert coach"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "OpponentPlan"
+    }
+  },
+  "name": "Opponent Counter Plan",
+  "description": "When a new OpponentPlan is generated, cross-reference real match evidence. If an opponent pattern kept succeeding, create a counter SubPlay and a Drill, then alert the head coach for approval."
+}
