@@ -1,13 +1,30 @@
 import { base44 } from "@/api/base44Client";
 import { isApprovedEvent, REVIEW_STATUS } from "@/lib/review";
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// The LLM provider can return a transient "service temporarily unavailable" error.
+// Retry a couple of times with backoff before surfacing a failure to the coach.
+async function invokeWithRetry(payload, attempts = 3) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await base44.integrations.Core.InvokeLLM(payload);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) await sleep(2000 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
 // Generates a belief-state / blindspot report for a match using the LLM,
 // then stores the key moments as coach-reviewable BlindspotEvent records.
 export async function runAnalysis(match) {
   await base44.entities.Match.update(match.id, { status: "analyzing", analysis_error: "" });
 
   try {
-    const result = await base44.integrations.Core.InvokeLLM({
+    const result = await invokeWithRetry({
       prompt: `You are a soccer "theory of mind" analyst. Using the match context below, produce a plausible
 scanning & blindspot report in the style of a tactical belief-state engine: for each key moment an observer
 player geometrically could see a teammate/opponent but their head pose says they did not.
@@ -91,7 +108,11 @@ Also return overall stats and a 3-4 sentence coaching summary.`,
       total_blindspots: approvedEvents.length + moments.length,
     });
   } catch (error) {
-    const message = "Analysis could not access or interpret this footage. Confirm that the video is playable, then try again.";
+    const raw = String(error?.message || "");
+    const overloaded = /temporarily unavailable|503|overload|rate limit|timeout/i.test(raw);
+    const message = overloaded
+      ? "The analysis service was busy and did not respond. Wait a moment and run the analysis again."
+      : "Analysis could not access or interpret this footage. Confirm that the video is playable, then try again.";
     await base44.entities.Match.update(match.id, {
       status: "failed",
       analysis_error: message,
