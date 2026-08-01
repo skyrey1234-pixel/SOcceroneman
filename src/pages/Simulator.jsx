@@ -5,6 +5,8 @@ import BlindspotFeed from "@/components/pitch/BlindspotFeed";
 import CorrectPlaySpotlight from "@/components/pitch/CorrectPlaySpotlight";
 import SimulatorHud from "@/components/pitch/SimulatorHud";
 import ContextDrawer from "@/components/pitch/ContextDrawer";
+import SimulatorStage from "@/components/pitch/SimulatorStage";
+import AngleSwitcher from "@/components/timemachine/AngleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { computeBeliefStates, allBlindspots, defaultFormation, effectiveFov } from "@/lib/blindspot";
@@ -15,6 +17,7 @@ export default function Simulator() {
   const [ball, setBall] = useState({ x: 42, y: 34 });
   const [selectedId, setSelectedId] = useState("home-6");
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [angle, setAngle] = useState("top");
 
   const beliefs = useMemo(() => computeBeliefStates(players, ball), [players, ball]);
   const blindspots = useMemo(() => allBlindspots(beliefs), [beliefs]);
@@ -67,15 +70,32 @@ export default function Simulator() {
 
       <div className="flex flex-col gap-6 lg:flex-row">
         <div className="min-w-0 flex-1">
-          <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-black/40">
-            <TacticalPitch
-              players={players}
-              ball={ball}
-              blindspots={blindspots}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onMove={move}
+          <div className="mb-3 flex justify-end">
+            <AngleSwitcher
+              value={angle}
+              onChange={setAngle}
+              observerNumber={selectedBelief?.observer?.number}
             />
+          </div>
+          <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-black/40">
+            {angle === "top" ? (
+              <TacticalPitch
+                players={players}
+                ball={ball}
+                blindspots={blindspots}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onMove={move}
+              />
+            ) : (
+              <SimulatorStage
+                angle={angle}
+                players={players}
+                ball={ball}
+                selectedId={selectedId}
+                blindspots={blindspots}
+              />
+            )}
             <SimulatorHud
               belief={selectedBelief}
               blindspotCount={blindspots.length}
