@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { replayWindowForEvent, replayTrustState } from "@/lib/timeMachine";
 import { youtubeId } from "@/lib/video";
 import TimeMachinePlayer from "./TimeMachinePlayer";
+import AngleSwitcher from "./AngleSwitcher";
+import PerspectiveStage from "./PerspectiveStage";
+import { angleFromTo } from "@/lib/replayAngles";
 import { FifaPitch, FifaToken, FifaPassLine, PITCH_W, PITCH_H } from "./FifaPitch";
 
 const W = PITCH_W;
@@ -23,6 +26,7 @@ export default function SoccerTimeMachine({ event, match }) {
   const [phase, setPhase] = useState("ready"); // ready, running, decision, revealed
   const [progress, setProgress] = useState(0);
   const [passT, setPassT] = useState(0);
+  const [angle, setAngle] = useState("top");
 
   const window = useMemo(() => replayWindowForEvent(event), [event]);
   const trust = useMemo(() => replayTrustState(event), [event]);
@@ -126,6 +130,38 @@ export default function SoccerTimeMachine({ event, match }) {
   const showActual = phase === "decision" || phase === "revealed";
   const showReads = phase === "revealed";
 
+  const ballPoint = showReads
+    ? {
+        x: lerp(scenario.ballHandler.end.x, scenario.missed.pos.x, easeOut(passT)),
+        y: lerp(scenario.ballHandler.end.y, scenario.missed.pos.y, easeOut(passT)),
+      }
+    : bhPos;
+
+  // Virtual angles reuse the exact same reconstructed geometry, just re-projected.
+  const povFacing = angleFromTo(bhPos, scenario.actualPass.pos);
+  const stageTokens = [
+    ...(angle === "pov"
+      ? []
+      : [{ id: "bh", ...bhPos, label: scenario.ballHandler.number, name: "ON BALL", isOpponent: false, highlight: false }]),
+    {
+      id: "missed",
+      ...scenario.missed.pos,
+      label: scenario.missed.number,
+      name: showReads ? "OPEN MAN" : undefined,
+      isOpponent: false,
+      highlight: showReads,
+    },
+    ...scenario.defenders.map((d, i) => ({ id: `def-${i}`, ...d, label: "", isOpponent: true, highlight: false })),
+  ];
+  const stageLines = [
+    ...(showActual
+      ? [{ from: scenario.ballHandler.end, to: scenario.actualPass.pos, color: "#ef4444", dashed: true, width: 0.4 }]
+      : []),
+    ...(showReads
+      ? [{ from: scenario.ballHandler.end, to: scenario.missed.pos, color: "#22c55e", width: 0.55 }]
+      : []),
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -166,10 +202,23 @@ export default function SoccerTimeMachine({ event, match }) {
       </div>
 
       <div>
-        <p className="mb-2 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
-          Tactical reconstruction · approved event geometry
-        </p>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+            Tactical reconstruction · approved event geometry
+          </p>
+          <AngleSwitcher value={angle} onChange={setAngle} observerNumber={event.observer_player} />
+        </div>
         <div className={`relative w-full rounded-xl overflow-hidden border border-border bg-black ${hasVideo ? "opacity-90" : ""}`}>
+        {angle !== "top" ? (
+          <PerspectiveStage
+            angle={angle}
+            camera={angle === "pov" ? bhPos : { x: 0, y: H / 2 }}
+            facing={povFacing}
+            tokens={stageTokens}
+            lines={stageLines}
+            ball={angle === "pov" && !showReads ? null : ballPoint}
+          />
+        ) : (
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block">
           <FifaPitch />
 
@@ -195,16 +244,7 @@ export default function SoccerTimeMachine({ event, match }) {
           )}
 
           {/* Ball */}
-          {showReads ? (
-            <circle
-              r="1.2"
-              fill="#ffffff"
-              cx={lerp(cx(scenario.ballHandler.end.x), cx(scenario.missed.pos.x), easeOut(passT))}
-              cy={lerp(cy(scenario.ballHandler.end.y), cy(scenario.missed.pos.y), easeOut(passT))}
-            />
-          ) : (
-            <circle r="1.2" fill="#ffffff" cx={cx(bhPos.x)} cy={cy(bhPos.y)} />
-          )}
+          <circle r="1.2" fill="#ffffff" cx={cx(ballPoint.x)} cy={cy(ballPoint.y)} />
 
           {/* Players */}
           <FifaToken
@@ -229,6 +269,7 @@ export default function SoccerTimeMachine({ event, match }) {
             <FifaToken key={i} x={cx(d.x)} y={cy(d.y)} label="" isOpponent highlight={false} />
           ))}
         </svg>
+        )}
 
           {phase === "decision" && !hasVideo && (
             <div className="absolute bottom-0 inset-x-0 z-20 p-4 bg-gradient-to-t from-black/85 to-transparent">
