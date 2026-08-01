@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Presentation, Eye, EyeOff, Printer } from "l
 import { Button } from "@/components/ui/button";
 import { SLIDES } from "@/lib/salesDeck";
 import DeckSlide from "@/components/sales/DeckSlide";
+import PushDeckToDrive from "@/components/sales/PushDeckToDrive";
 
 export default function SalesDeck() {
   const [index, setIndex] = useState(0);
@@ -24,7 +25,7 @@ export default function SalesDeck() {
             handling. Reps can run this on their own, start to finish.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowNotes((v) => !v)}>
             {showNotes ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
             {showNotes ? "Hide notes" : "Show notes"}
@@ -32,6 +33,7 @@ export default function SalesDeck() {
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
+          <PushDeckToDrive includeNotes={showNotes} />
         </div>
       </div>
 
