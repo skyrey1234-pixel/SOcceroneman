@@ -16,7 +16,7 @@ export default function PlayerInspector({ player, belief, onChange }) {
       <div className="flex items-center gap-3">
         <div
           className="w-10 h-10 rounded-full grid place-items-center font-bold text-slate-900"
-          style={{ background: player.team === "home" ? "#38bdf8" : "#f472b6" }}
+          style={{ background: player.team === "home" ? "#38bdf8" : "#ef4444" }}
         >
           {player.number}
         </div>
