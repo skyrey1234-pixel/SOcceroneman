@@ -1,0 +1,286 @@
+import React, { useEffect, useRef, useState, useMemo } from "react";
+import { Play, RotateCcw, Lightbulb, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const W = 105;
+const H = 68;
+
+const RUN_MS = 2000;
+const PASS_MS = 800;
+
+const cx = (v) => Math.min(W - 2, Math.max(2, v ?? W / 2));
+const cy = (v) => Math.min(H - 2, Math.max(2, v ?? H / 2));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
+function Chalk() {
+  const s = { fill: "none", stroke: "rgba(255,255,255,0.25)", strokeWidth: 0.35 };
+  return (
+    <g>
+      <rect x="0" y="0" width={W} height={H} fill="#08251a" />
+      <rect x="1" y="1" width={W - 2} height={H - 2} {...s} />
+      <line x1={W / 2} y1="1" x2={W / 2} y2={H - 1} {...s} />
+      <circle cx={W / 2} cy={H / 2} r="9.15" {...s} />
+      <rect x="1" y={H / 2 - 20.16} width="16.5" height="40.32" {...s} />
+      <rect x={W - 17.5} y={H / 2 - 20.16} width="16.5" height="40.32" {...s} />
+      <rect x="1" y={H / 2 - 9.16} width="5.5" height="18.32" {...s} />
+      <rect x={W - 6.5} y={H / 2 - 9.16} width="5.5" height="18.32" {...s} />
+    </g>
+  );
+}
+
+function Token({ x, y, label, isOpponent, highlight }) {
+  const color = highlight ? "#22c55e" : isOpponent ? "#fca5a5" : "#6ee7b7";
+  return (
+    <g transform={`translate(${cx(x)} ${cy(y)})`}>
+      {highlight && <circle r="4.4" fill="none" stroke={color} strokeWidth="0.3" strokeDasharray="1 0.8" className="animate-pulse" />}
+      {isOpponent ? (
+        <g stroke={color} strokeWidth="0.7" strokeLinecap="round">
+          <line x1="-1.8" y1="-1.8" x2="1.8" y2="1.8" />
+          <line x1="1.8" y1="-1.8" x2="-1.8" y2="1.8" />
+        </g>
+      ) : (
+        <circle r="2.1" fill={highlight ? color : "none"} stroke={color} strokeWidth="0.7" />
+      )}
+      <text y="-3.4" textAnchor="middle" fontSize="2.1" fill={color} className="font-mono">
+        {label}
+      </text>
+    </g>
+  );
+}
+
+export default function SoccerTimeMachine({ event }) {
+  const [phase, setPhase] = useState("ready"); // ready, running, decision, revealed
+  const [progress, setProgress] = useState(0);
+  const [passT, setPassT] = useState(0);
+
+  const runRaf = useRef(null);
+  const passRaf = useRef(null);
+  const runStart = useRef(0);
+  const passStart = useRef(0);
+
+  const scenario = useMemo(() => {
+    // Generate a plausible tactical scenario from the blindspot data
+    const angleRad = ((event.angle_deg || 0) * Math.PI) / 180;
+    const dist = event.distance_m || 15;
+
+    // Use the recorded observer location when it exists. Older events fall back to a neutral central setup.
+    const recordedPosition = {
+      x: Number.isFinite(event.pitch_x) ? event.pitch_x : W / 2,
+      y: Number.isFinite(event.pitch_y) ? event.pitch_y : H / 2,
+    };
+    const bhStart = { x: recordedPosition.x - 10, y: recordedPosition.y };
+    const bhEnd = recordedPosition;
+
+    // Missed player based on angle and distance
+    const missedX = bhEnd.x + Math.cos(angleRad) * dist;
+    const missedY = bhEnd.y + Math.sin(angleRad) * dist;
+
+    // Actual pass (usually backward or sideways into pressure if it was a mistake)
+    const actualX = bhEnd.x - 10;
+    const actualY = bhEnd.y + 10;
+
+    return {
+      ballHandler: { start: bhStart, end: bhEnd, number: event.observer_player },
+      missed: { pos: { x: missedX, y: missedY }, number: event.missed_player },
+      actualPass: { pos: { x: actualX, y: actualY } },
+      defenders: [
+        { x: bhEnd.x + 5, y: bhEnd.y - 2 },
+        { x: actualX + 2, y: actualY - 2 } // Pressure on the actual pass
+      ]
+    };
+  }, [event]);
+
+  const stopRaf = () => {
+    cancelAnimationFrame(runRaf.current);
+    cancelAnimationFrame(passRaf.current);
+  };
+
+  const reset = () => {
+    stopRaf();
+    setPhase("ready");
+    setProgress(0);
+    setPassT(0);
+  };
+
+  useEffect(() => reset, [event]);
+
+  const runPossession = () => {
+    stopRaf();
+    setPassT(0);
+    setProgress(0);
+    setPhase("running");
+    runStart.current = 0;
+
+    const step = (ts) => {
+      if (!runStart.current) runStart.current = ts;
+      const p = Math.min((ts - runStart.current) / RUN_MS, 1);
+      setProgress(p);
+      if (p < 1) runRaf.current = requestAnimationFrame(step);
+      else setPhase("decision");
+    };
+    runRaf.current = requestAnimationFrame(step);
+  };
+
+  const reveal = () => {
+    setPhase("revealed");
+    setPassT(0);
+    passStart.current = 0;
+
+    const step = (ts) => {
+      if (!passStart.current) passStart.current = ts;
+      const p = Math.min((ts - passStart.current) / PASS_MS, 1);
+      setPassT(p);
+      if (p < 1) passRaf.current = requestAnimationFrame(step);
+    };
+    passRaf.current = requestAnimationFrame(step);
+  };
+
+  const t = easeOut(progress);
+  const bhPos = {
+    x: lerp(scenario.ballHandler.start.x, scenario.ballHandler.end.x, phase === "ready" ? 0 : t),
+    y: lerp(scenario.ballHandler.start.y, scenario.ballHandler.end.y, phase === "ready" ? 0 : t)
+  };
+
+  const showActual = phase === "decision" || phase === "revealed";
+  const showReads = phase === "revealed";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-md bg-[#FF7A1A]/10 border border-[#FF7A1A]/30 px-2.5 py-1 text-[11px] font-mono text-[#FF7A1A]">
+            <Eye className="h-3 w-3" /> Time Machine
+          </div>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Player #{event.observer_player ?? "?"} Decision Review
+          </p>
+        </div>
+      </div>
+
+      <div className="relative w-full rounded-xl overflow-hidden border border-border bg-black">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block">
+          <Chalk />
+
+          {/* Actual Pass (Red) */}
+          {showActual && (
+            <line
+              x1={cx(scenario.ballHandler.end.x)}
+              y1={cy(scenario.ballHandler.end.y)}
+              x2={cx(scenario.actualPass.pos.x)}
+              y2={cy(scenario.actualPass.pos.y)}
+              stroke="#ef4444"
+              strokeWidth="0.4"
+              strokeDasharray="1 1"
+            />
+          )}
+
+          {/* Better Read (Green) */}
+          {showReads && (
+            <line
+              x1={cx(scenario.ballHandler.end.x)}
+              y1={cy(scenario.ballHandler.end.y)}
+              x2={cx(scenario.missed.pos.x)}
+              y2={cy(scenario.missed.pos.y)}
+              stroke="#22c55e"
+              strokeWidth="0.6"
+            />
+          )}
+
+          {/* Ball */}
+          {showReads ? (
+            <circle
+              r="1.2"
+              fill="#ffffff"
+              cx={lerp(cx(scenario.ballHandler.end.x), cx(scenario.missed.pos.x), easeOut(passT))}
+              cy={lerp(cy(scenario.ballHandler.end.y), cy(scenario.missed.pos.y), easeOut(passT))}
+            />
+          ) : (
+            <circle r="1.2" fill="#ffffff" cx={cx(bhPos.x)} cy={cy(bhPos.y)} />
+          )}
+
+          {/* Players */}
+          <Token x={bhPos.x} y={bhPos.y} label={scenario.ballHandler.number} />
+          <Token x={scenario.missed.pos.x} y={scenario.missed.pos.y} label={scenario.missed.number} highlight={showReads} />
+
+          {/* Defenders */}
+          {scenario.defenders.map((d, i) => (
+            <Token key={i} x={d.x} y={d.y} label="X" isOpponent />
+          ))}
+        </svg>
+
+        {phase === "decision" && (
+          <div className="absolute bottom-0 inset-x-0 z-20 p-4 bg-gradient-to-t from-black/85 to-transparent">
+            <p className="text-sm text-white/90 font-medium text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
+              The play develops. You have the ball. What did you miss?
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {phase === "ready" && (
+          <Button onClick={runPossession} className="bg-[#FF7A1A] text-black hover:bg-[#ff8c3a]">
+            <Play className="mr-2 h-4 w-4 fill-current" /> Run play
+          </Button>
+        )}
+        {phase === "running" && (
+          <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-[#FF7A1A] animate-pulse" /> Reliving it…
+          </div>
+        )}
+        {phase === "decision" && (
+          <Button onClick={reveal} className="bg-green-600 text-white hover:bg-green-500 animate-in fade-in">
+            <Lightbulb className="mr-2 h-4 w-4" /> Reveal the open man
+          </Button>
+        )}
+        {(phase === "decision" || phase === "revealed") && (
+          <Button variant="outline" onClick={reset}>
+            <RotateCcw className="mr-2 h-4 w-4" /> Replay
+          </Button>
+        )}
+
+        {(phase === "running" || phase === "decision" || phase === "revealed") && (
+          <div className="flex-1 min-w-[120px] h-1.5 bg-secondary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#FF7A1A] rounded-full"
+              style={{ width: `${progress * 100}%`, transition: "width 75ms linear" }}
+            />
+          </div>
+        )}
+      </div>
+
+      {(phase === "decision" || phase === "revealed") && (
+        <div className="grid sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom-3 duration-500">
+          <div className="rounded-lg border border-red-400/40 bg-red-400/5 p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+              <span className="text-xs font-semibold text-red-400 uppercase tracking-wide">What happened</span>
+            </div>
+            <p className="text-sm font-semibold text-white">Played into pressure</p>
+            <p className="text-xs text-muted-foreground mt-1">Failed to scan the blindside before receiving.</p>
+          </div>
+
+          <div className={`rounded-lg border p-3 transition-all duration-500 ${
+            showReads ? "border-green-500/50 bg-green-500/10" : "border-border bg-secondary/40 blur-[2px] opacity-60"
+          }`}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+              <span className="text-xs font-semibold text-green-400 uppercase tracking-wide">The read</span>
+            </div>
+            {showReads ? (
+              <>
+                <p className="text-sm font-semibold text-white">Player #{event.missed_player ?? "?"} was open</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {Number.isFinite(event.distance_m) ? event.distance_m.toFixed(1) : "—"}m away at {Math.round(event.angle_deg || 0)}°. {event.feedback || "See the far-side option before committing the pass."}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Hit "Reveal the open man" to see it…</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,7 +1,8 @@
 import React from "react";
-import { AlertTriangle, Check, CheckCircle2, Clock3, Play, RotateCcw, X, Video, ScanSearch } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Clock3, Play, RotateCcw, X, Video, ScanSearch, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CorrectPlayPanel from "./CorrectPlayPanel";
+import SoccerTimeMachine from "@/components/timemachine/SoccerTimeMachine";
 import {
   isApprovedEvent,
   isDismissedEvent,
@@ -22,6 +23,7 @@ export function formatClock(totalSeconds) {
 }
 
 export default function BlindspotMoment({ event, match, onPlay, onReview, reviewing = false }) {
+  const [showTimeMachine, setShowTimeMachine] = React.useState(false);
   const sev = Math.round((event.severity || 0) * 100);
   const tone = sev >= 75 ? "text-red-300" : sev >= 50 ? "text-amber-300" : "text-emerald-300";
   const ts = timestampOf(event);
@@ -130,7 +132,37 @@ export default function BlindspotMoment({ event, match, onPlay, onReview, review
         </div>
       )}
 
-      {!dismissed && <CorrectPlayPanel event={event} match={match} />}
+      {!dismissed && (
+        <div className="space-y-4">
+          {approved ? (
+            <>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-[#FF7A1A]/30 bg-[#FF7A1A]/10 text-[#FF7A1A] hover:bg-[#FF7A1A]/20 hover:text-[#FF7A1A]"
+                  onClick={() => setShowTimeMachine(!showTimeMachine)}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  {showTimeMachine ? "Close Time Machine" : "Enter Time Machine"}
+                </Button>
+              </div>
+
+              {showTimeMachine && (
+                <div className="rounded-2xl border border-[#FF7A1A]/30 bg-black/40 p-4">
+                  <SoccerTimeMachine event={event} />
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="rounded-xl border border-dashed border-border/60 bg-muted/20 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+              Approve this finding to unlock the Time Machine decision replay. It only uses coach-approved evidence.
+            </p>
+          )}
+
+          <CorrectPlayPanel event={event} match={match} />
+        </div>
+      )}
     </div>
   );
 }
