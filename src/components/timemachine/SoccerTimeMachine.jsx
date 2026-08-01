@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { replayWindowForEvent, replayTrustState } from "@/lib/timeMachine";
 import { youtubeId } from "@/lib/video";
 import TimeMachinePlayer from "./TimeMachinePlayer";
+import { FifaPitch, FifaToken, FifaPassLine, PITCH_W, PITCH_H } from "./FifaPitch";
 
-const W = 105;
-const H = 68;
+const W = PITCH_W;
+const H = PITCH_H;
 
 const RUN_MS = 2000;
 const PASS_MS = 800;
@@ -16,41 +17,7 @@ const cy = (v) => Math.min(H - 2, Math.max(2, v ?? H / 2));
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
-function Chalk() {
-  const s = { fill: "none", stroke: "rgba(255,255,255,0.25)", strokeWidth: 0.35 };
-  return (
-    <g>
-      <rect x="0" y="0" width={W} height={H} fill="#08251a" />
-      <rect x="1" y="1" width={W - 2} height={H - 2} {...s} />
-      <line x1={W / 2} y1="1" x2={W / 2} y2={H - 1} {...s} />
-      <circle cx={W / 2} cy={H / 2} r="9.15" {...s} />
-      <rect x="1" y={H / 2 - 20.16} width="16.5" height="40.32" {...s} />
-      <rect x={W - 17.5} y={H / 2 - 20.16} width="16.5" height="40.32" {...s} />
-      <rect x="1" y={H / 2 - 9.16} width="5.5" height="18.32" {...s} />
-      <rect x={W - 6.5} y={H / 2 - 9.16} width="5.5" height="18.32" {...s} />
-    </g>
-  );
-}
 
-function Token({ x, y, label, isOpponent, highlight }) {
-  const color = highlight ? "#22c55e" : isOpponent ? "#fca5a5" : "#6ee7b7";
-  return (
-    <g transform={`translate(${cx(x)} ${cy(y)})`}>
-      {highlight && <circle r="4.4" fill="none" stroke={color} strokeWidth="0.3" strokeDasharray="1 0.8" className="animate-pulse" />}
-      {isOpponent ? (
-        <g stroke={color} strokeWidth="0.7" strokeLinecap="round">
-          <line x1="-1.8" y1="-1.8" x2="1.8" y2="1.8" />
-          <line x1="1.8" y1="-1.8" x2="-1.8" y2="1.8" />
-        </g>
-      ) : (
-        <circle r="2.1" fill={highlight ? color : "none"} stroke={color} strokeWidth="0.7" />
-      )}
-      <text y="-3.4" textAnchor="middle" fontSize="2.1" fill={color} className="font-mono">
-        {label}
-      </text>
-    </g>
-  );
-}
 
 export default function SoccerTimeMachine({ event, match }) {
   const [phase, setPhase] = useState("ready"); // ready, running, decision, revealed
@@ -203,30 +170,26 @@ export default function SoccerTimeMachine({ event, match }) {
         </p>
         <div className={`relative w-full rounded-xl overflow-hidden border border-border bg-black ${hasVideo ? "opacity-90" : ""}`}>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block">
-          <Chalk />
+          <FifaPitch />
 
           {/* Actual Pass (Red) */}
           {showActual && (
-            <line
-              x1={cx(scenario.ballHandler.end.x)}
-              y1={cy(scenario.ballHandler.end.y)}
-              x2={cx(scenario.actualPass.pos.x)}
-              y2={cy(scenario.actualPass.pos.y)}
-              stroke="#ef4444"
-              strokeWidth="0.4"
-              strokeDasharray="1 1"
+            <FifaPassLine
+              from={{ x: cx(scenario.ballHandler.end.x), y: cy(scenario.ballHandler.end.y) }}
+              to={{ x: cx(scenario.actualPass.pos.x), y: cy(scenario.actualPass.pos.y) }}
+              color="#ef4444"
+              dashed
+              width={0.45}
             />
           )}
 
           {/* Better Read (Green) */}
           {showReads && (
-            <line
-              x1={cx(scenario.ballHandler.end.x)}
-              y1={cy(scenario.ballHandler.end.y)}
-              x2={cx(scenario.missed.pos.x)}
-              y2={cy(scenario.missed.pos.y)}
-              stroke="#22c55e"
-              strokeWidth="0.6"
+            <FifaPassLine
+              from={{ x: cx(scenario.ballHandler.end.x), y: cy(scenario.ballHandler.end.y) }}
+              to={{ x: cx(scenario.missed.pos.x), y: cy(scenario.missed.pos.y) }}
+              color="#22c55e"
+              width={0.6}
             />
           )}
 
@@ -243,12 +206,26 @@ export default function SoccerTimeMachine({ event, match }) {
           )}
 
           {/* Players */}
-          <Token x={bhPos.x} y={bhPos.y} label={scenario.ballHandler.number} isOpponent={false} highlight={false} />
-          <Token x={scenario.missed.pos.x} y={scenario.missed.pos.y} label={scenario.missed.number} isOpponent={false} highlight={showReads} />
+          <FifaToken
+            x={cx(bhPos.x)}
+            y={cy(bhPos.y)}
+            label={scenario.ballHandler.number}
+            name="ON BALL"
+            isOpponent={false}
+            highlight={false}
+          />
+          <FifaToken
+            x={cx(scenario.missed.pos.x)}
+            y={cy(scenario.missed.pos.y)}
+            label={scenario.missed.number}
+            name={showReads ? "OPEN MAN" : undefined}
+            isOpponent={false}
+            highlight={showReads}
+          />
 
           {/* Defenders */}
           {scenario.defenders.map((d, i) => (
-            <Token key={i} x={d.x} y={d.y} label="X" isOpponent highlight={false} />
+            <FifaToken key={i} x={cx(d.x)} y={cy(d.y)} label="" isOpponent highlight={false} />
           ))}
         </svg>
 
