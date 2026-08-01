@@ -17,6 +17,7 @@ import WarRoom from '@/pages/WarRoom';
 import Drills from '@/pages/Drills';
 import Compare from '@/pages/Compare';
 import PublicPlayerReport from '@/pages/PublicPlayerReport';
+import ProductDemo from '@/pages/ProductDemo';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -64,6 +65,7 @@ const PublicApp = () => {
   return (
     <Routes>
       <Route path="/report/:token" element={<PublicPlayerReport />} />
+      <Route path="/demo" element={<ProductDemo />} />
       <Route path="*" element={<AuthenticatedApp />} />
     </Routes>
   );
