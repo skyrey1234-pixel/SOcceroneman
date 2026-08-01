@@ -22,14 +22,26 @@ export function formatClock(totalSeconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function BlindspotMoment({ event, match, onPlay, onReview, reviewing = false }) {
+export default function BlindspotMoment({ event, match, onPlay, onReview, reviewing = false, onLoadReplay }) {
   const [showTimeMachine, setShowTimeMachine] = React.useState(false);
+  const [loadingReplay, setLoadingReplay] = React.useState(false);
+  const [replayEvent, setReplayEvent] = React.useState(null);
   const sev = Math.round((event.severity || 0) * 100);
   const tone = sev >= 75 ? "text-red-300" : sev >= 50 ? "text-amber-300" : "text-emerald-300";
   const ts = timestampOf(event);
   const approved = isApprovedEvent(event);
   const dismissed = isDismissedEvent(event);
   const pending = isPendingReview(event);
+  const replayBadge = event.replay_status === "tracked"
+    ? "Tracked replay"
+    : event.replay_status === "keyframe"
+      ? "Evidence keyframe"
+      : "Visual evidence";
+
+  React.useEffect(() => {
+    setShowTimeMachine(false);
+    setReplayEvent(null);
+  }, [event.id, event.review_status]);
 
   const statusClass = approved
     ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
@@ -75,7 +87,7 @@ export default function BlindspotMoment({ event, match, onPlay, onReview, review
           )}
           {hasVisualAnnotation(event) && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-emerald-300">
-              <ScanSearch className="h-3 w-3" /> Visual tracking
+              <ScanSearch className="h-3 w-3" /> {replayBadge}
             </span>
           )}
         </div>
@@ -141,16 +153,32 @@ export default function BlindspotMoment({ event, match, onPlay, onReview, review
                   variant="outline"
                   size="sm"
                   className="w-full border-[#FF7A1A]/30 bg-[#FF7A1A]/10 text-[#FF7A1A] hover:bg-[#FF7A1A]/20 hover:text-[#FF7A1A]"
-                  onClick={() => setShowTimeMachine(!showTimeMachine)}
+                  disabled={loadingReplay}
+                  onClick={async () => {
+                    if (showTimeMachine) {
+                      setShowTimeMachine(false);
+                    } else {
+                      setLoadingReplay(true);
+                      try {
+                        const loaded = onLoadReplay ? await onLoadReplay(event) : event;
+                        if (loaded) {
+                          setReplayEvent(loaded);
+                          setShowTimeMachine(true);
+                        }
+                      } finally {
+                        setLoadingReplay(false);
+                      }
+                    }
+                  }}
                 >
-                  <Eye className="mr-2 h-4 w-4" />
-                  {showTimeMachine ? "Close Time Machine" : "Enter Time Machine"}
+                  <Eye className={`mr-2 h-4 w-4 ${loadingReplay ? "animate-pulse" : ""}`} />
+                  {loadingReplay ? "Loading evidence..." : showTimeMachine ? "Close Time Machine" : "Enter Time Machine"}
                 </Button>
               </div>
 
-              {showTimeMachine && (
-                <div className="rounded-2xl border border-[#FF7A1A]/30 bg-black/40 p-4">
-                  <SoccerTimeMachine event={event} />
+              {showTimeMachine && replayEvent && (
+                <div className="rounded-2xl border border-[#FF7A1A]/30 bg-black/40 p-4 animate-in fade-in zoom-in-95 duration-300">
+                  <SoccerTimeMachine event={replayEvent} match={match} />
                 </div>
               )}
             </>

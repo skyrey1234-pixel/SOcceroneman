@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { Play, RotateCcw, Lightbulb, Eye } from "lucide-react";
+import { Play, RotateCcw, Lightbulb, Eye, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { replayWindowForEvent, replayTrustState } from "@/lib/timeMachine";
+import { youtubeId } from "@/lib/video";
+import TimeMachinePlayer from "./TimeMachinePlayer";
 
 const W = 105;
 const H = 68;
@@ -49,10 +52,15 @@ function Token({ x, y, label, isOpponent, highlight }) {
   );
 }
 
-export default function SoccerTimeMachine({ event }) {
+export default function SoccerTimeMachine({ event, match }) {
   const [phase, setPhase] = useState("ready"); // ready, running, decision, revealed
   const [progress, setProgress] = useState(0);
   const [passT, setPassT] = useState(0);
+
+  const window = useMemo(() => replayWindowForEvent(event), [event]);
+  const trust = useMemo(() => replayTrustState(event), [event]);
+  const ytId = useMemo(() => youtubeId(match?.youtube_url || ""), [match?.youtube_url]);
+  const hasVideo = Boolean(ytId || match?.video_url);
 
   const runRaf = useRef(null);
   const passRaf = useRef(null);
@@ -112,15 +120,20 @@ export default function SoccerTimeMachine({ event }) {
     setPhase("running");
     runStart.current = 0;
 
-    const step = (ts) => {
-      if (!runStart.current) runStart.current = ts;
-      const p = Math.min((ts - runStart.current) / RUN_MS, 1);
-      setProgress(p);
-      if (p < 1) runRaf.current = requestAnimationFrame(step);
-      else setPhase("decision");
-    };
-    runRaf.current = requestAnimationFrame(step);
+    if (!hasVideo) {
+      const step = (ts) => {
+        if (!runStart.current) runStart.current = ts;
+        const p = Math.min((ts - runStart.current) / RUN_MS, 1);
+        setProgress(p);
+        if (p < 1) runRaf.current = requestAnimationFrame(step);
+        else setPhase("decision");
+      };
+      runRaf.current = requestAnimationFrame(step);
+    }
   };
+
+  const handleVideoProgress = (p) => setProgress(p);
+  const handleVideoEnd = () => setPhase("decision");
 
   const reveal = () => {
     setPhase("revealed");
@@ -156,9 +169,39 @@ export default function SoccerTimeMachine({ event }) {
             Player #{event.observer_player ?? "?"} Decision Review
           </p>
         </div>
+        <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono border ${
+          trust.tone === "emerald" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+          trust.tone === "sky" ? "bg-sky-500/10 text-sky-400 border-sky-500/20" :
+          trust.tone === "amber" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+          "bg-slate-500/10 text-slate-400 border-slate-500/20"
+        }`}>
+          <ShieldAlert className="h-3 w-3" /> {trust.shortLabel}
+        </div>
       </div>
 
-      <div className="relative w-full rounded-xl overflow-hidden border border-border bg-black">
+      {hasVideo ? (
+        <TimeMachinePlayer
+          youtubeId={ytId}
+          videoUrl={match.video_url}
+          event={event}
+          evidenceWindow={window}
+          phase={phase}
+          onPlaybackProgress={handleVideoProgress}
+          onPlaybackEnd={handleVideoEnd}
+        />
+      ) : null}
+
+      <div className="rounded-lg border border-border/70 bg-secondary/30 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+        <span className="font-semibold text-foreground/90">{trust.label}. </span>
+        {trust.description}
+        {event.replay_note ? ` ${event.replay_note}` : ""}
+      </div>
+
+      <div>
+        <p className="mb-2 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+          Tactical reconstruction · approved event geometry
+        </p>
+        <div className={`relative w-full rounded-xl overflow-hidden border border-border bg-black ${hasVideo ? "opacity-90" : ""}`}>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block">
           <Chalk />
 
@@ -200,22 +243,23 @@ export default function SoccerTimeMachine({ event }) {
           )}
 
           {/* Players */}
-          <Token x={bhPos.x} y={bhPos.y} label={scenario.ballHandler.number} />
-          <Token x={scenario.missed.pos.x} y={scenario.missed.pos.y} label={scenario.missed.number} highlight={showReads} />
+          <Token x={bhPos.x} y={bhPos.y} label={scenario.ballHandler.number} isOpponent={false} highlight={false} />
+          <Token x={scenario.missed.pos.x} y={scenario.missed.pos.y} label={scenario.missed.number} isOpponent={false} highlight={showReads} />
 
           {/* Defenders */}
           {scenario.defenders.map((d, i) => (
-            <Token key={i} x={d.x} y={d.y} label="X" isOpponent />
+            <Token key={i} x={d.x} y={d.y} label="X" isOpponent highlight={false} />
           ))}
         </svg>
 
-        {phase === "decision" && (
-          <div className="absolute bottom-0 inset-x-0 z-20 p-4 bg-gradient-to-t from-black/85 to-transparent">
-            <p className="text-sm text-white/90 font-medium text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
-              The play develops. You have the ball. What did you miss?
-            </p>
-          </div>
-        )}
+          {phase === "decision" && !hasVideo && (
+            <div className="absolute bottom-0 inset-x-0 z-20 p-4 bg-gradient-to-t from-black/85 to-transparent">
+              <p className="text-sm text-white/90 font-medium text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
+                The play develops. You have the ball. What did you miss?
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -257,8 +301,10 @@ export default function SoccerTimeMachine({ event }) {
               <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
               <span className="text-xs font-semibold text-red-400 uppercase tracking-wide">What happened</span>
             </div>
-            <p className="text-sm font-semibold text-white">Played into pressure</p>
-            <p className="text-xs text-muted-foreground mt-1">Failed to scan the blindside before receiving.</p>
+            <p className="text-sm font-semibold text-white">The original decision</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {event.what_went_wrong || "The approved review identified a better available action."}
+            </p>
           </div>
 
           <div className={`rounded-lg border p-3 transition-all duration-500 ${
@@ -270,7 +316,9 @@ export default function SoccerTimeMachine({ event }) {
             </div>
             {showReads ? (
               <>
-                <p className="text-sm font-semibold text-white">Player #{event.missed_player ?? "?"} was open</p>
+                <p className="text-sm font-semibold text-white">
+                  {event.missed_player != null ? `Player #${event.missed_player} was the better option` : "A better option was available"}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {Number.isFinite(event.distance_m) ? event.distance_m.toFixed(1) : "—"}m away at {Math.round(event.angle_deg || 0)}°. {event.feedback || "See the far-side option before committing the pass."}
                 </p>

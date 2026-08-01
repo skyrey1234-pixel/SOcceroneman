@@ -78,7 +78,7 @@ export default function MatchVideoPlayer({ match, seekSeconds, selectedEvidence 
         {selectedEvidence && hasVisualAnnotation(selectedEvidence) && (
           <p className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
             <Video className="h-3.5 w-3.5" />
-            YouTube plays the selected timestamp, but its cross-origin iframe prevents on-frame overlays. Open a direct uploaded video to view boxes in-app.
+            The standard player opens the selected moment without overlays. Enter the approved Time Machine replay to view synchronized evidence boxes over YouTube or uploaded footage.
           </p>
         )}
       </section>

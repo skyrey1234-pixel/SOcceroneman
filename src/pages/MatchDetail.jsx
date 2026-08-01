@@ -16,6 +16,7 @@ import { downloadCsv } from "@/lib/exportCsv";
 import { isApprovedEvent, isDismissedEvent, isPendingReview, REVIEW_STATUS } from "@/lib/review";
 import { VISION_STATUS, visionStatusLabel, requestVisionAnalysis } from "@/lib/vision";
 import { eventTimestampSeconds } from "@/lib/evidence";
+import { loadTimeMachineReplay } from "@/lib/timeMachine";
 import { ArrowLeft, Download, EyeOff, Loader2, Sparkles, TriangleAlert, Video } from "lucide-react";
 
 export default function MatchDetail() {
@@ -135,6 +136,20 @@ export default function MatchDetail() {
     const timestamp = eventTimestampSeconds(event);
     setSelectedEvidence(event);
     setSeek(Math.max(0, timestamp - 2));
+  };
+
+  const loadReplay = async (event) => {
+    try {
+      const response = await loadTimeMachineReplay(event.id);
+      return response.event;
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Could not load Time Machine evidence",
+        description: error?.message || "Please try again.",
+      });
+      return null;
+    }
   };
 
   const playerNumbers = [...new Set(reviewEvents.map((e) => e.observer_player))]
@@ -325,6 +340,7 @@ export default function MatchDetail() {
               onPlay={playEvidence}
               onReview={reviewEvent}
               reviewing={reviewingId === event.id}
+              onLoadReplay={loadReplay}
             />
           ))
         )}

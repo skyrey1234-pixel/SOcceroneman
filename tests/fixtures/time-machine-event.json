@@ -1,0 +1,37 @@
+{
+  "id": "fixture-approved-event",
+  "review_status": "approved",
+  "evidence_source": "computer_vision",
+  "timestamp_seconds": 104,
+  "evidence_start_seconds": 100,
+  "evidence_end_seconds": 108,
+  "replay_keyframe_seconds": 104,
+  "replay_status": "tracked",
+  "replay_sample_fps": 1,
+  "replay_frames": [
+    {
+      "timestamp_seconds": 104,
+      "track_id": "pose-7",
+      "observer_box": { "x": 0.32, "y": 0.22, "width": 0.15, "height": 0.51 },
+      "context_box": { "x": 0.64, "y": 0.24, "width": 0.13, "height": 0.46 },
+      "head_direction_proxy": 0.35,
+      "observer_confidence": 0.91
+    },
+    {
+      "timestamp_seconds": 102,
+      "track_id": "pose-7",
+      "observer_box": { "x": 0.29, "y": 0.22, "width": 0.15, "height": 0.51 },
+      "context_box": { "x": 0.61, "y": 0.24, "width": 0.13, "height": 0.46 },
+      "head_direction_proxy": -0.18,
+      "observer_confidence": 0.88
+    },
+    {
+      "timestamp_seconds": 103,
+      "track_id": "pose-7",
+      "observer_box": { "x": 0.3, "y": 0.22, "width": 0.15, "height": 0.51 },
+      "context_box": { "x": 0.62, "y": 0.24, "width": 0.13, "height": 0.46 },
+      "head_direction_proxy": 0.08,
+      "observer_confidence": 0.9
+    }
+  ]
+}

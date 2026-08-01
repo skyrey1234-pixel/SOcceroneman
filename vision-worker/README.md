@@ -11,6 +11,7 @@ This service is the **external computer-vision layer** for SOcceroneman. It rece
 | **Real pose inference** | Uses the Apache-2.0 MediaPipe Pose Landmarker, a real keypoint model, rather than asking an LLM to invent boxes. |
 | **Bounding boxes** | Generates normalized boxes for the tracked player and nearby visual context, which the Base44 app can overlay on uploaded/direct video. |
 | **Timestamped evidence** | Returns an evidence window and timestamp for every candidate so the app can seek to it. |
+| **Tracked Time Machine replay** | Attaches a compact, capped sequence of normalized track frames for synchronized freeze-and-reveal playback. |
 | **Async jobs** | Accepts the job immediately and processes it in a single worker thread to prevent the small CPU machine from being overloaded. |
 | **Coach safety** | Labels all results as candidates and returns a clear provenance note. The app keeps them out of drills, reports, and opponent patterns until approval. |
 
@@ -18,7 +19,7 @@ This service is the **external computer-vision layer** for SOcceroneman. It rece
 
 The initial worker is deliberately limited to **15-minute clips at 1 sample per second** and one concurrent job. It is a proof-of-concept for uploaded clips, not a full-match or real-time processing cluster. Broadcast footage with tiny, occluded players can produce weak pose detections. For a full-match commercial product, preserve this API contract but move the engine to GPU-backed infrastructure and evaluate it on annotated soccer footage.
 
-YouTube is accepted only when `yt-dlp` can access a public video. The worker follows the availability rules of the source platform and does not bypass access controls. The Base44 UI can deep-link to YouTube timestamps, but it does not draw visual boxes across a cross-origin YouTube iframe. Base44-uploaded direct video can display boxes as an overlay.
+YouTube is accepted only when `yt-dlp` can access a public video. The worker follows the availability rules of the source platform and does not bypass access controls. The Time Machine player uses synchronized browser-side overlays for both supported YouTube footage and Base44-uploaded direct video; those overlays are still limited to the evidence quality returned by the worker.
 
 ## Request and callback contract
 
@@ -56,10 +57,13 @@ set -a && . ./.env && set +a
 python app.py
 ```
 
+`VISION_MAX_REPLAY_FRAMES` controls the compact frame cap for each candidate event and defaults to `32`. Keep this cap bounded because replay evidence is persisted with the event and is sanitized again by the callback.
+
 Verify the service without exposing operational details:
 
 ```bash
 curl http://127.0.0.1:8123/healthz
+python3 smoke_test.py
 ```
 
 ## Cloud Computer deployment

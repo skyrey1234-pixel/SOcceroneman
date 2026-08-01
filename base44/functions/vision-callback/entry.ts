@@ -9,6 +9,9 @@ const numberOr = (value: unknown, fallback = 0) => {
 const clamp = (value: unknown, min: number, max: number, fallback = min) =>
   Math.max(min, Math.min(max, numberOr(value, fallback)));
 
+const REPLAY_SCHEMA_VERSION = "socceroneman.time-machine.v2";
+const MAX_REPLAY_FRAMES = 80;
+
 function normalizedBox(value: unknown) {
   if (!value || typeof value !== "object") return null;
   const box = value as Record<string, unknown>;
@@ -17,11 +20,33 @@ function normalizedBox(value: unknown) {
   const width = numberOr(box.width, NaN);
   const height = numberOr(box.height, NaN);
   if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
+  const normalizedX = clamp(x, 0, 1);
+  const normalizedY = clamp(y, 0, 1);
+  const normalizedWidth = clamp(width, 0, 1 - normalizedX);
+  const normalizedHeight = clamp(height, 0, 1 - normalizedY);
+  if (normalizedWidth <= 0 || normalizedHeight <= 0) return null;
   return {
-    x: clamp(x, 0, 1),
-    y: clamp(y, 0, 1),
-    width: clamp(width, 0, 1),
-    height: clamp(height, 0, 1),
+    x: normalizedX,
+    y: normalizedY,
+    width: normalizedWidth,
+    height: normalizedHeight,
+  };
+}
+
+function normalizedReplayFrame(value: unknown, start: number, end: number) {
+  if (!value || typeof value !== "object") return null;
+  const frame = value as Record<string, unknown>;
+  const observerBox = normalizedBox(frame.observer_box);
+  const contextBox = normalizedBox(frame.context_box ?? frame.missed_player_box);
+  if (!observerBox && !contextBox) return null;
+
+  return {
+    timestamp_seconds: clamp(frame.timestamp_seconds, start, end, start),
+    track_id: typeof frame.track_id === "string" ? frame.track_id.slice(0, 120) : "",
+    observer_box: observerBox || undefined,
+    context_box: contextBox || undefined,
+    head_direction_proxy: clamp(frame.head_direction_proxy, -1.5, 1.5, 0),
+    observer_confidence: clamp(frame.observer_confidence, 0, 1, 0),
   };
 }
 
@@ -69,9 +94,30 @@ export default async function (req: Request): Promise<Response> {
     const preparedEvents = inputEvents.map((raw: unknown) => {
       const event = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
       const timestamp = Math.max(0, numberOr(event.timestamp_seconds));
-      const observerBox = normalizedBox(event.observer_box);
-      const missedBox = normalizedBox(event.missed_player_box);
+      const evidenceStart = Math.max(0, numberOr(event.evidence_start_seconds, timestamp - 4));
+      const evidenceEnd = Math.max(timestamp, numberOr(event.evidence_end_seconds, timestamp + 6));
+      const rawReplayFrames = Array.isArray(event.replay_frames)
+        ? event.replay_frames.slice(0, MAX_REPLAY_FRAMES)
+        : [];
+      const replayFrames = rawReplayFrames
+        .map((frame: unknown) => normalizedReplayFrame(frame, evidenceStart, evidenceEnd))
+        .filter((frame): frame is NonNullable<ReturnType<typeof normalizedReplayFrame>> => frame !== null)
+        .sort((a, b) => a.timestamp_seconds - b.timestamp_seconds);
+      const decisionFrame = replayFrames.length
+        ? replayFrames.reduce((nearest, frame) =>
+            Math.abs(frame.timestamp_seconds - timestamp) < Math.abs(nearest.timestamp_seconds - timestamp)
+              ? frame
+              : nearest
+          , replayFrames[0])
+        : null;
+      const observerBox = normalizedBox(event.observer_box) || decisionFrame?.observer_box || null;
+      const missedBox = normalizedBox(event.missed_player_box) || decisionFrame?.context_box || null;
       const sourceConfidence = clamp(event.confidence ?? event.evidence_confidence, 0, 1, 0.5);
+      const replayStatus = replayFrames.length >= 2
+        ? "tracked"
+        : replayFrames.length || observerBox || missedBox
+          ? "keyframe"
+          : "unavailable";
 
       return {
         match_id: match.id,
@@ -92,13 +138,21 @@ export default async function (req: Request): Promise<Response> {
         feedback: typeof event.feedback === "string" ? event.feedback : "Coach review required: verify the video evidence before using this finding.",
         evidence_source: "computer_vision",
         evidence_confidence: sourceConfidence,
-        evidence_start_seconds: Math.max(0, numberOr(event.evidence_start_seconds, timestamp - 4)),
-        evidence_end_seconds: Math.max(timestamp, numberOr(event.evidence_end_seconds, timestamp + 6)),
+        evidence_start_seconds: evidenceStart,
+        evidence_end_seconds: evidenceEnd,
         evidence_note: typeof event.evidence_note === "string" ? event.evidence_note.slice(0, 800) : "Measured by the configured vision worker; coach review required.",
         evidence_thumbnail_url: typeof event.evidence_thumbnail_url === "string" ? event.evidence_thumbnail_url : "",
         annotation_state: observerBox || missedBox ? "verified" : "none",
         observer_box: observerBox || undefined,
         missed_player_box: missedBox || undefined,
+        replay_schema_version: REPLAY_SCHEMA_VERSION,
+        replay_status: replayStatus,
+        replay_keyframe_seconds: clamp(event.replay_keyframe_seconds, evidenceStart, evidenceEnd, timestamp),
+        replay_sample_fps: clamp(event.replay_sample_fps ?? payload.sample_fps, 0, 30, 0),
+        replay_note: typeof event.replay_note === "string"
+          ? event.replay_note.slice(0, 800)
+          : "Replay overlays are measured camera-plane evidence. Secondary boxes are visual context, not verified tactical roles.",
+        replay_frames: replayFrames,
         vision_analysis_id: analysis.id,
         vision_track_id: typeof event.vision_track_id === "string" ? event.vision_track_id : "",
         review_status: "pending",
@@ -109,6 +163,11 @@ export default async function (req: Request): Promise<Response> {
       await base44.asServiceRole.entities.BlindspotEvent.bulkCreate(preparedEvents);
     }
 
+    const eventsWithReplay = preparedEvents.filter((event) => event.replay_status !== "unavailable").length;
+    const replayFramesCreated = preparedEvents.reduce(
+      (total, event) => total + (Array.isArray(event.replay_frames) ? event.replay_frames.length : 0),
+      0
+    );
     const completedAt = new Date().toISOString();
     await base44.asServiceRole.entities.VisionAnalysis.update(analysis.id, {
       status: "complete",
@@ -118,6 +177,9 @@ export default async function (req: Request): Promise<Response> {
       video_duration_seconds: numberOr(payload.video_duration_seconds),
       overall_confidence: clamp(payload.overall_confidence, 0, 1, 0),
       events_created: preparedEvents.length,
+      replay_schema_version: REPLAY_SCHEMA_VERSION,
+      events_with_replay: eventsWithReplay,
+      replay_frames_created: replayFramesCreated,
       result_url: typeof payload.result_url === "string" ? payload.result_url : "",
       result_hash: typeof payload.result_hash === "string" ? payload.result_hash : "",
       completed_at: completedAt,
@@ -130,7 +192,13 @@ export default async function (req: Request): Promise<Response> {
       video_duration_seconds: numberOr(payload.video_duration_seconds),
     });
 
-    return Response.json({ ok: true, status: "complete", eventsCreated: preparedEvents.length });
+    return Response.json({
+      ok: true,
+      status: "complete",
+      eventsCreated: preparedEvents.length,
+      eventsWithReplay,
+      replayFramesCreated,
+    });
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : "Could not process the vision callback." },

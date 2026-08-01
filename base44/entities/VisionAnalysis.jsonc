@@ -42,6 +42,17 @@
       "type": "number",
       "default": 0
     },
+    "replay_schema_version": {
+      "type": "string"
+    },
+    "events_with_replay": {
+      "type": "number",
+      "default": 0
+    },
+    "replay_frames_created": {
+      "type": "number",
+      "default": 0
+    },
     "result_url": {
       "type": "string",
       "description": "Optional URL to a durable, provider-generated analysis artifact"

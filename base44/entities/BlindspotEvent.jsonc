@@ -114,6 +114,73 @@
         "height": { "type": "number" }
       }
     },
+    "replay_schema_version": {
+      "type": "string",
+      "description": "Versioned Time Machine replay payload contract"
+    },
+    "replay_status": {
+      "type": "string",
+      "enum": [
+        "unavailable",
+        "keyframe",
+        "tracked"
+      ],
+      "default": "unavailable",
+      "description": "Best replay fidelity available for this event"
+    },
+    "replay_keyframe_seconds": {
+      "type": "number",
+      "description": "Decision freeze timestamp in seconds"
+    },
+    "replay_sample_fps": {
+      "type": "number",
+      "description": "Sampling rate used to produce replay frames"
+    },
+    "replay_note": {
+      "type": "string",
+      "description": "Plain-language scope and confidence boundary for the replay"
+    },
+    "replay_frames": {
+      "type": "array",
+      "description": "Compact normalized overlay track for the event evidence window",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp_seconds": {
+            "type": "number"
+          },
+          "track_id": {
+            "type": "string"
+          },
+          "observer_box": {
+            "type": "object",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "width": { "type": "number" },
+              "height": { "type": "number" }
+            }
+          },
+          "context_box": {
+            "type": "object",
+            "description": "Nearby visual context; not a verified missed runner unless explicitly coach-marked",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "width": { "type": "number" },
+              "height": { "type": "number" }
+            }
+          },
+          "head_direction_proxy": {
+            "type": "number",
+            "description": "Camera-plane nose-to-shoulder offset proxy, not gaze or true yaw"
+          },
+          "observer_confidence": {
+            "type": "number"
+          }
+        }
+      }
+    },
     "vision_analysis_id": {
       "type": "string"
     },

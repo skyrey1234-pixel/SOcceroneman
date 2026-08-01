@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 
 APP_NAME = "SOcceroneman Vision Worker"
-APP_VERSION = "0.1.0-pilot"
+APP_VERSION = "0.2.0-time-machine"
 ROOT = Path(os.getenv("VISION_WORKER_ROOT", "/var/lib/socceroneman-vision"))
 MODEL_DIR = ROOT / "models"
 JOB_DIR = ROOT / "jobs"
@@ -49,6 +49,8 @@ PROVIDER_TOKEN = os.getenv("VISION_PROVIDER_TOKEN", "")
 MAX_DURATION_SECONDS = int(os.getenv("VISION_MAX_DURATION_SECONDS", "900"))
 SAMPLE_FPS = float(os.getenv("VISION_SAMPLE_FPS", "1"))
 MAX_EVENTS = int(os.getenv("VISION_MAX_EVENTS", "40"))
+MAX_REPLAY_FRAMES = int(os.getenv("VISION_MAX_REPLAY_FRAMES", "32"))
+REPLAY_SCHEMA_VERSION = "socceroneman.time-machine.v2"
 MAX_DOWNLOAD_BYTES = int(os.getenv("VISION_MAX_DOWNLOAD_BYTES", str(1536 * 1024 * 1024)))
 MAX_CONCURRENT_JOBS = int(os.getenv("VISION_MAX_CONCURRENT_JOBS", "1"))
 ALLOWED_HOSTS = {host.strip().lower() for host in os.getenv("VISION_ALLOWED_HOSTS", "").split(",") if host.strip()}
@@ -93,6 +95,18 @@ class TrackSnapshot:
     head_offset: float
     confidence: float
     timestamp: float
+
+    def as_replay_frame(self, context_box: dict[str, float] | None = None) -> dict[str, Any]:
+        frame: dict[str, Any] = {
+            "timestamp_seconds": round(self.timestamp, 3),
+            "track_id": self.track_id,
+            "observer_box": self.box,
+            "head_direction_proxy": round(self.head_offset, 4),
+            "observer_confidence": round(max(0.0, min(1.0, self.confidence)), 4),
+        }
+        if context_box:
+            frame["context_box"] = context_box
+        return frame
 
 
 def now_iso() -> str:
@@ -339,6 +353,47 @@ def make_candidate_event(current: TrackSnapshot, previous: TrackSnapshot, contex
     }
 
 
+def limited_replay_frames(frames: list[dict[str, Any]], limit: int = MAX_REPLAY_FRAMES) -> list[dict[str, Any]]:
+    if limit <= 0 or not frames:
+        return []
+    if len(frames) <= limit:
+        return frames
+    if limit == 1:
+        return [frames[len(frames) // 2]]
+
+    indexes = {
+        round(index * (len(frames) - 1) / (limit - 1))
+        for index in range(limit)
+    }
+    return [frames[index] for index in sorted(indexes)]
+
+
+def attach_replay_frames(
+    event: dict[str, Any],
+    timeline_by_track: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    track_id = str(event.get("vision_track_id") or "")
+    start = float(event.get("evidence_start_seconds") or event.get("timestamp_seconds") or 0)
+    end = float(event.get("evidence_end_seconds") or event.get("timestamp_seconds") or start)
+    timeline = timeline_by_track.get(track_id, [])
+    frames = [
+        frame
+        for frame in timeline
+        if start - 0.001 <= float(frame.get("timestamp_seconds") or 0) <= end + 0.001
+    ]
+    frames = limited_replay_frames(frames)
+    event["replay_schema_version"] = REPLAY_SCHEMA_VERSION
+    event["replay_status"] = "tracked" if len(frames) >= 2 else "keyframe" if frames else "unavailable"
+    event["replay_keyframe_seconds"] = round(float(event.get("timestamp_seconds") or 0), 3)
+    event["replay_sample_fps"] = SAMPLE_FPS
+    event["replay_frames"] = frames
+    event["replay_note"] = (
+        "Replay boxes follow one MediaPipe pose track through the evidence window. "
+        "The secondary box is nearby visual context only. Head direction is a camera-plane proxy, not gaze, identity, or tactical intent."
+    )
+    return event
+
+
 def analyze_video(video_path: Path) -> dict[str, Any]:
     duration = ffprobe_duration(video_path)
     if duration > MAX_DURATION_SECONDS:
@@ -372,6 +427,7 @@ def analyze_video(video_path: Path) -> dict[str, Any]:
     frame_index = 0
     next_track = 1
     confidences: list[float] = []
+    timeline_by_track: dict[str, list[dict[str, Any]]] = {}
 
     try:
         with mp.tasks.vision.PoseLandmarker.create_from_options(options) as landmarker:
@@ -390,6 +446,10 @@ def analyze_video(video_path: Path) -> dict[str, Any]:
                 current_tracks, next_track = assign_tracks(previous_tracks, records, timestamp, next_track)
                 context_boxes = [track.box for track in current_tracks]
                 for current in current_tracks:
+                    context_box = nearest_context_box(current.box, context_boxes)
+                    timeline_by_track.setdefault(current.track_id, []).append(
+                        current.as_replay_frame(context_box)
+                    )
                     prior = last_by_track.get(current.track_id)
                     last_by_track[current.track_id] = current
                     confidences.append(current.confidence)
@@ -407,9 +467,13 @@ def analyze_video(video_path: Path) -> dict[str, Any]:
     finally:
         cap.release()
 
+    events = [attach_replay_frames(event, timeline_by_track) for event in events]
+    replay_frames_created = sum(len(event.get("replay_frames") or []) for event in events)
+    events_with_replay = sum(1 for event in events if event.get("replay_status") != "unavailable")
     confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
     artifact = {
-        "schema": "socceroneman.vision-result.v1",
+        "schema": "socceroneman.vision-result.v2",
+        "replay_schema_version": REPLAY_SCHEMA_VERSION,
         "model_name": "MediaPipe Pose Landmarker",
         "model_version": "lite-task",
         "sample_fps": SAMPLE_FPS,
@@ -418,6 +482,8 @@ def analyze_video(video_path: Path) -> dict[str, Any]:
         "source_frame_count": frame_count,
         "sampled_frames": processed,
         "overall_confidence": round(confidence, 3),
+        "events_with_replay": events_with_replay,
+        "replay_frames_created": replay_frames_created,
         "events": events,
         "scope_note": "Pose boxes and head-direction proxy are computer-vision candidates only; coach review is required.",
     }
@@ -475,6 +541,9 @@ def process_job(request_data: JobRequest, worker_job_id: str) -> None:
             "sample_fps": result["sample_fps"],
             "video_duration_seconds": result["video_duration_seconds"],
             "overall_confidence": result["overall_confidence"],
+            "replay_schema_version": result["replay_schema_version"],
+            "events_with_replay": result["events_with_replay"],
+            "replay_frames_created": result["replay_frames_created"],
             "events": result["events"],
             "result_hash": result_hash,
         }
@@ -519,6 +588,8 @@ def health() -> dict[str, Any]:
         "configured": bool(PROVIDER_TOKEN),
         "max_duration_seconds": MAX_DURATION_SECONDS,
         "sample_fps": SAMPLE_FPS,
+        "replay_schema_version": REPLAY_SCHEMA_VERSION,
+        "max_replay_frames_per_event": MAX_REPLAY_FRAMES,
         "active_jobs": sum(1 for job in jobs.values() if job.get("status") in {"queued", "processing"}),
     }
 
