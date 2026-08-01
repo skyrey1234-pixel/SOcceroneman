@@ -18,6 +18,7 @@ import Drills from '@/pages/Drills';
 import Compare from '@/pages/Compare';
 import PublicPlayerReport from '@/pages/PublicPlayerReport';
 import ProductDemo from '@/pages/ProductDemo';
+import SalesDeck from '@/pages/SalesDeck';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -55,6 +56,7 @@ const AuthenticatedApp = () => {
         <Route path="/drills" element={<Drills />} />
         <Route path="/compare" element={<Compare />} />
         <Route path="/simulator" element={<Simulator />} />
+        <Route path="/sales-deck" element={<SalesDeck />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

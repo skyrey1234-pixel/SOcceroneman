@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Film, Radar, Users, Swords, Dumbbell, Columns2 } from "lucide-react";
+import { LayoutDashboard, Film, Radar, Users, Swords, Dumbbell, Columns2, Presentation } from "lucide-react";
 import { featureFlags } from "@/lib/app-params";
 
 const nav = [
@@ -11,6 +11,7 @@ const nav = [
   { to: "/compare", label: "Compare", icon: Columns2 },
   { to: "/war-room", label: "War Room Beta", icon: Swords, feature: "warRoom" },
   { to: "/simulator", label: "Live Pitch", icon: Radar },
+  { to: "/sales-deck", label: "Sales Deck", icon: Presentation },
 ];
 
 export default function AppLayout() {
