@@ -87,16 +87,17 @@ export default function SoccerTimeMachine({ event, match }) {
     setPhase("running");
     runStart.current = 0;
 
-    if (!hasVideo) {
-      const step = (ts) => {
-        if (!runStart.current) runStart.current = ts;
-        const p = Math.min((ts - runStart.current) / RUN_MS, 1);
-        setProgress(p);
-        if (p < 1) runRaf.current = requestAnimationFrame(step);
-        else setPhase("decision");
-      };
-      runRaf.current = requestAnimationFrame(step);
-    }
+    // The tactical reconstruction always animates, so the replay still works
+    // if the video player never becomes ready.
+    const duration = hasVideo ? RUN_MS * 2 : RUN_MS;
+    const step = (ts) => {
+      if (!runStart.current) runStart.current = ts;
+      const p = Math.min((ts - runStart.current) / duration, 1);
+      setProgress((prev) => Math.max(prev, p));
+      if (p < 1) runRaf.current = requestAnimationFrame(step);
+      else setPhase((prev) => (prev === "running" ? "decision" : prev));
+    };
+    runRaf.current = requestAnimationFrame(step);
   };
 
   const handleVideoProgress = (p) => setProgress(p);

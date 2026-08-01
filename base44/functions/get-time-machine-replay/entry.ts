@@ -58,9 +58,17 @@ export default async function (req: Request): Promise<Response> {
     const match = await base44.entities.Match.get(event.match_id);
     if (!match) return Response.json({ error: "The linked match is unavailable." }, { status: 404 });
 
-    const timestamp = Math.max(0, numberOr(event.replay_keyframe_seconds, numberOr(event.timestamp_seconds)));
-    const start = Math.max(0, numberOr(event.evidence_start_seconds, timestamp - 4));
-    const end = Math.max(timestamp, numberOr(event.evidence_end_seconds, timestamp + 6));
+    // Fall back through keyframe -> absolute seconds -> match clock so older AI drafts
+    // (which only store minute + second) still resolve to a real footage position.
+    const clockSeconds = numberOr(event.minute) * 60 + numberOr(event.second);
+    const timestamp = Math.max(
+      0,
+      numberOr(event.replay_keyframe_seconds, 0) ||
+        numberOr(event.timestamp_seconds, 0) ||
+        clockSeconds
+    );
+    const start = Math.max(0, numberOr(event.evidence_start_seconds, 0) || Math.max(0, timestamp - 4));
+    const end = Math.max(timestamp, numberOr(event.evidence_end_seconds, 0) || timestamp + 6);
     const frames = (Array.isArray(event.replay_frames) ? event.replay_frames : [])
       .slice(0, 80)
       .map((frame: unknown) => replayFrame(frame, start, end))
@@ -82,6 +90,10 @@ export default async function (req: Request): Promise<Response> {
         match_id: event.match_id,
         observer_player: event.observer_player ?? null,
         missed_player: event.missed_player ?? null,
+        minute: numberOr(event.minute),
+        second: numberOr(event.second),
+        severity: event.severity ?? null,
+        scan_quality: event.scan_quality ?? null,
         timestamp_seconds: timestamp,
         evidence_start_seconds: start,
         evidence_end_seconds: end,
