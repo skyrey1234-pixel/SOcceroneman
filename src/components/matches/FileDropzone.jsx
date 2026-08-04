@@ -44,7 +44,7 @@ export default function FileDropzone({ file, onFile, error }) {
           <>
             <UploadCloud className="h-6 w-6 text-emerald-300" />
             <p className="text-sm">Drop match footage here</p>
-            <p className="text-xs text-muted-foreground">MP4 / MOV / WebM · maximum 10 GB · or click to browse</p>
+            <p className="text-xs text-muted-foreground">MP4 / MOV / WebM · up to 500 MB · full matches: use the YouTube link tab</p>
           </>
         )}
       </label>

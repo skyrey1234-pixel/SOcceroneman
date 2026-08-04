@@ -10,7 +10,7 @@ const YOUTUBE_HOSTS = new Set([
 ]);
 
 const SUPPORTED_VIDEO_EXTENSIONS = new Set(["mp4", "mov", "webm"]);
-export const MAX_MATCH_VIDEO_BYTES = 10 * 1024 * 1024 * 1024;
+export const MAX_MATCH_VIDEO_BYTES = 500 * 1024 * 1024;
 
 export function youtubeId(input = "") {
   const value = input.trim();
@@ -48,7 +48,7 @@ export function validateMatchVideoFile(file) {
   }
 
   if (file.size > MAX_MATCH_VIDEO_BYTES) {
-    return "This file is larger than 10 GB. Trim or compress the footage, or add the match as a YouTube link instead.";
+    return "Direct uploads are capped at 500 MB — a full match at full quality will fail partway through. Add it as a YouTube link instead, or upload a trimmed/compressed clip.";
   }
 
   return null;
