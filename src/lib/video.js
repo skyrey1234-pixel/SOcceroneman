@@ -10,7 +10,7 @@ const YOUTUBE_HOSTS = new Set([
 ]);
 
 const SUPPORTED_VIDEO_EXTENSIONS = new Set(["mp4", "mov", "webm"]);
-export const MAX_MATCH_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
+export const MAX_MATCH_VIDEO_BYTES = 10 * 1024 * 1024 * 1024;
 
 export function youtubeId(input = "") {
   const value = input.trim();
@@ -48,7 +48,7 @@ export function validateMatchVideoFile(file) {
   }
 
   if (file.size > MAX_MATCH_VIDEO_BYTES) {
-    return "This file is larger than 2 GB. Trim or compress the match footage before uploading.";
+    return "This file is larger than 10 GB. Trim or compress the footage, or add the match as a YouTube link instead.";
   }
 
   return null;
